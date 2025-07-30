@@ -1,0 +1,17 @@
+package jwt_claims
+
+import (
+	"chat_app_backend/internal/sqlc/db_queries"
+	"github.com/google/uuid"
+)
+
+type UserClaims struct {
+	ID            uuid.UUID `json:"id"`
+	FullName      string    `json:"full_name"`
+	Email         string    `json:"email"`
+	EmailVerified bool      `json:"email_verified"`
+}
+
+func (uc *UserClaims) Equals(user *db_queries.User) bool {
+	return uc.ID == user.ID && uc.FullName == user.FullName && uc.Email == user.Email && uc.EmailVerified == user.EmailVerified
+}

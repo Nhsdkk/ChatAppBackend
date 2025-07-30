@@ -1,0 +1,142 @@
+package application
+
+import (
+	controllers "chat_app_backend/application/controllers/users"
+	"chat_app_backend/application/models/jwt_claims"
+	"chat_app_backend/internal/configuration"
+	"chat_app_backend/internal/env_loader"
+	"chat_app_backend/internal/jwt"
+	logger2 "chat_app_backend/internal/logger"
+	"chat_app_backend/internal/middleware"
+	"chat_app_backend/internal/service_wrapper"
+	"chat_app_backend/internal/sqlc/db"
+	"context"
+	"errors"
+	"github.com/gin-gonic/gin"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+type IApplication interface {
+	Configure()
+	Serve()
+	Close()
+}
+
+type Config struct {
+	Url string
+}
+
+type Application struct {
+	config         *Config
+	engine         *gin.Engine
+	server         *http.Server
+	serviceWrapper service_wrapper.IServiceWrapper
+	configuration  configuration.IConfiguration
+}
+
+func (appl *Application) Close() {
+	if err := appl.server.Close(); err != nil {
+		log.Fatalf("Can't close server: %s", err)
+	}
+
+	if err := appl.serviceWrapper.Close(); err != nil {
+		log.Fatalf("Can't close services: %s", err)
+	}
+}
+
+func (appl *Application) Configure() {
+	appl.loadConfigurations()
+	appl.configureServices()
+	appl.configureMiddleware()
+	appl.configureRoutes()
+}
+
+func (appl *Application) configureRoutes() {
+	controllers.CreateUserController(appl.engine, appl.serviceWrapper).ConfigureGroup()
+}
+
+func (appl *Application) configureMiddleware() {
+	appl.engine.Use(
+		middleware.RequestLoggingMiddleware(appl.serviceWrapper.GetLogger()),
+		middleware.ErrorHandlerMiddleware(appl.serviceWrapper.GetLogger()),
+		middleware.AuthorizationMiddleware(
+			appl.serviceWrapper.GetJwtHandler(),
+			appl.serviceWrapper.GetDbConnection(),
+		),
+	)
+}
+
+func (appl *Application) loadConfigurations() {
+	dbConfiguration := &db.PostgresConfig{}
+	jwtConfig := &jwt.JwtConfig{}
+	envLoader := env_loader.CreateLoaderFromEnv()
+
+	dbConfigurationLoadingErr := envLoader.LoadDataIntoStruct(dbConfiguration)
+	if dbConfigurationLoadingErr != nil {
+		log.Fatal(dbConfigurationLoadingErr)
+	}
+
+	jwtConfigurationLoadingError := envLoader.LoadDataIntoStruct(jwtConfig)
+	if jwtConfigurationLoadingError != nil {
+		log.Fatal(jwtConfigurationLoadingError)
+	}
+
+	appl.configuration = configuration.CreateConfiguration().
+		AddConfiguration(jwtConfig).
+		AddConfiguration(dbConfiguration)
+}
+
+func (appl *Application) configureServices() {
+	ctx := context.Background()
+
+	dbConnection, err := configuration.BuildFromConfiguration[db.Connection](
+		appl.configuration,
+		db.CreateConnection,
+		&ctx,
+	)
+
+	if err != nil {
+		log.Fatalf("Can't connect to database: %s", err)
+	}
+
+	jwtHandler, _ := configuration.BuildFromConfiguration[jwt.Handler[jwt_claims.UserClaims]](
+		appl.configuration,
+		jwt.CreateJwtHandler[jwt_claims.UserClaims],
+	)
+
+	logger := logger2.CreateLogger(os.Stdout)
+
+	appl.serviceWrapper = service_wrapper.CreateWrapper(dbConnection, jwtHandler, logger)
+}
+
+func (appl *Application) Serve() {
+	go func() {
+		if err := appl.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("run error: %s", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	appl.Close()
+}
+
+func Create(config *Config) *Application {
+	engine := gin.New()
+	return &Application{
+		engine: engine,
+		config: config,
+		server: &http.Server{
+			Addr:    config.Url,
+			Handler: engine,
+		},
+		serviceWrapper: nil,
+		configuration:  nil,
+	}
+}

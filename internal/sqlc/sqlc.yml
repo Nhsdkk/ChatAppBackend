@@ -1,0 +1,25 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "./queries"
+    schema: "./migrations"
+    gen:
+      go:
+        package: "db_queries"
+        out: "db_queries"
+        sql_package: "pgx/v5"
+        overrides:
+          - db_type: "timestamptz"
+            go_type:
+              type: "time.Time"
+          - db_type: "timestamptz"
+            nullable: true
+            go_type:
+              type: "*time.Time"
+          - db_type: "uuid"
+            go_type:
+              type: "uuid.UUID"
+          - db_type: "uuid"
+            nullable: true
+            go_type:
+              type: "*uuid.UUID"
