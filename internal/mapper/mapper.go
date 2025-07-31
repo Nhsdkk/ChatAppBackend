@@ -34,7 +34,7 @@ func (m Mapper) Map(dest interface{}, srcs ...interface{}) error {
 			tag, ok := field.Tag.Lookup(MapperTag)
 			if ok {
 				if tag != ExcludeTagValue {
-					panic(fmt.Sprintf("malformed tag on field with name %s", field.Name))
+					panic(fmt.Sprintf("malformed mapper tag on field with name %s (expected %s, but got %s)", field.Name, ExcludeTagValue, tag))
 				}
 				continue
 			}
@@ -104,7 +104,7 @@ func findValue(field reflect.StructField, srcVals ...reflect.Value) (*reflect.Va
 		tag, ok := srcFieldT.Tag.Lookup(MapperTag)
 		if ok {
 			if tag != ExcludeTagValue {
-				panic(fmt.Sprintf("malformed tag on field with name %s", srcFieldT.Name))
+				panic(fmt.Sprintf("malformed mapper tag on field with name %s (expected %s, but got %s)", field.Name, ExcludeTagValue, tag))
 			}
 			continue
 		}
