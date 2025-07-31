@@ -93,7 +93,7 @@ func findValue(field reflect.StructField, srcVals ...reflect.Value) (*reflect.Va
 		}
 
 		if !srcField.CanInterface() {
-			return nil, errors.New(fmt.Sprintf("src field is unexported"))
+			return nil, errors.New(fmt.Sprintf("src field %s is unexported", field.Name))
 		}
 
 		return &srcField, nil
