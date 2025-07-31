@@ -7,7 +7,6 @@ import (
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/service_wrapper"
-	"errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,12 +18,6 @@ func (g GetUserDataHandler) Handle(
 	ctx *gin.Context,
 	requestEnvironment *request_env.RequestEnv,
 ) (*get_user_data.GetUserDataResponseDto, error) {
-	if requestEnvironment.User == nil {
-		return nil, exception.ServerException{
-			Err: errors.New("user is null on authorized handler"),
-		}
-	}
-
 	interestsRaw, interestsQueryError := services.GetDbConnection().GetQueries().GetUserInterests(ctx, requestEnvironment.User.ID)
 	if interestsQueryError != nil {
 		return nil, exception.ServerException{

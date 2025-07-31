@@ -3,15 +3,16 @@ sql:
   - engine: "postgresql"
     queries: "./queries"
     schema: "./migrations"
-    database:
-      uri: "${DATABASE_URI}"
-    rules:
-      - sqlc/db-prepare
+#    database:
+#      uri: "${DATABASE_URI}"
+#    rules:
+#      - sqlc/db-prepare
     gen:
       go:
         package: "db_queries"
         out: "db_queries"
         sql_package: "pgx/v5"
+        emit_pointers_for_null_types: true
         overrides:
           - db_type: "timestamptz"
             go_type:
@@ -27,3 +28,10 @@ sql:
             nullable: true
             go_type:
               type: "*uuid.UUID"
+          - db_type: "bytea"
+            go_type:
+              type: "[]byte"
+          - db_type: "bytea"
+            nullable: true
+            go_type:
+              type: "*[]byte"

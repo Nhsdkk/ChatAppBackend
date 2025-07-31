@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -123,32 +122,36 @@ func (q *Queries) RemoveUser(ctx context.Context, id uuid.UUID) error {
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET
-    full_name = coalesce($1, full_name),
-    birthday = coalesce($2, birthday),
-    gender = coalesce($3, gender),
-    email = coalesce($4, email),
-    password = coalesce($5, password),
-    avatar_file_name = coalesce($6, avatar_file_name),
+    online = coalesce($1, online),
+    full_name = coalesce($2, full_name),
+    birthday = coalesce($3, birthday),
+    gender = coalesce($4, gender),
+    email = coalesce($5, email),
+    password = coalesce($6, password),
+    avatar_file_name = coalesce($7, avatar_file_name),
     email_verified = case
-        when $4 is null then true
+        when $5 is null then email_verified
         else false
-    end
-WHERE users.id = $7
+    end,
+    updated_at = now()
+WHERE users.id = $8
 RETURNING id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at
 `
 
 type UpdateUserParams struct {
-	FullName       pgtype.Text
+	Online         *bool
+	FullName       *string
 	Birthday       *time.Time
 	Gender         NullGender
-	Email          pgtype.Text
-	Password       []byte
-	AvatarFileName pgtype.Text
+	Email          *string
+	Password       *[]byte
+	AvatarFileName *string
 	ID             uuid.UUID
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, updateUser,
+		arg.Online,
 		arg.FullName,
 		arg.Birthday,
 		arg.Gender,

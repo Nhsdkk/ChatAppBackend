@@ -7,6 +7,9 @@ import (
 	"reflect"
 )
 
+const MapperTag = "mapper"
+const ExcludeTagValue = "exclude"
+
 type IDest struct{}
 
 type IMapper interface {
@@ -27,6 +30,15 @@ func (m Mapper) Map(dest interface{}, srcs ...interface{}) error {
 
 		for fieldIdx := range srcVal.NumField() {
 			field := srcVal.Type().Field(fieldIdx)
+
+			tag, ok := field.Tag.Lookup(MapperTag)
+			if ok {
+				if tag != ExcludeTagValue {
+					panic(fmt.Sprintf("malformed tag on field with name %s", field.Name))
+				}
+				continue
+			}
+
 			if _, ok := valNamesExistence[field.Name]; ok {
 				return errors.New(fmt.Sprintf("name collision found as field %s exists in more than one struct", field.Name))
 			}
@@ -82,21 +94,30 @@ func mapStruct(destVal reflect.Value, srcVals ...reflect.Value) error {
 
 func findValue(field reflect.StructField, srcVals ...reflect.Value) (*reflect.Value, error) {
 	for _, srcVal := range srcVals {
-		srcField := srcVal.FieldByName(field.Name)
+		srcFieldV := srcVal.FieldByName(field.Name)
 
-		if !srcField.IsValid() {
+		if !srcFieldV.IsValid() {
 			continue
 		}
 
-		if !mapper.SameTypes(srcField.Type(), field.Type) {
-			return nil, errors.New(fmt.Sprintf("kinds of values does not match (%s and %s)", srcField.Kind(), field.Type.Kind()))
+		srcFieldT, _ := srcVal.Type().FieldByName(field.Name)
+		tag, ok := srcFieldT.Tag.Lookup(MapperTag)
+		if ok {
+			if tag != ExcludeTagValue {
+				panic(fmt.Sprintf("malformed tag on field with name %s", srcFieldT.Name))
+			}
+			continue
 		}
 
-		if !srcField.CanInterface() {
+		if !mapper.SameTypes(srcFieldV.Type(), field.Type) {
+			return nil, errors.New(fmt.Sprintf("kinds of values does not match (%s and %s)", srcFieldV.Kind(), field.Type.Kind()))
+		}
+
+		if !srcFieldV.CanInterface() {
 			return nil, errors.New(fmt.Sprintf("src field %s is unexported", field.Name))
 		}
 
-		return &srcField, nil
+		return &srcFieldV, nil
 	}
 
 	return nil, errors.New(fmt.Sprintf("src does not have field %s, which dest has", field.Name))

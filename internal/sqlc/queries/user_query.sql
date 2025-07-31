@@ -19,6 +19,7 @@ RETURNING *;
 -- name: UpdateUser :one
 UPDATE users
 SET
+    online = coalesce(sqlc.narg('online'), online),
     full_name = coalesce(sqlc.narg('full_name'), full_name),
     birthday = coalesce(sqlc.narg('birthday'), birthday),
     gender = coalesce(sqlc.narg('gender'), gender),
@@ -26,9 +27,10 @@ SET
     password = coalesce(sqlc.narg('password'), password),
     avatar_file_name = coalesce(sqlc.narg('avatar_file_name'), avatar_file_name),
     email_verified = case
-        when sqlc.narg('email') is null then true
+        when sqlc.narg('email') is null then email_verified
         else false
-    end
+    end,
+    updated_at = now()
 WHERE users.id = @id
 RETURNING *;
 
