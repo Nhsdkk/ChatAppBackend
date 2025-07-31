@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ChatType string
@@ -107,7 +106,7 @@ type Attachment struct {
 
 type Chat struct {
 	ID        uuid.UUID
-	Title     pgtype.Text
+	Title     *string
 	CType     ChatType
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -125,7 +124,7 @@ type Message struct {
 	ID                 uuid.UUID
 	ChatID             uuid.UUID
 	SenderID           uuid.UUID
-	RawText            pgtype.Text
+	RawText            *string
 	Edited             bool
 	MessageReferenceID *uuid.UUID
 	CreatedAt          time.Time

@@ -3,10 +3,12 @@ package controllers
 import (
 	"chat_app_backend/application/controllers/users/validators"
 	"chat_app_backend/application/handlers/users"
+	delete2 "chat_app_backend/application/models/users/delete"
 	"chat_app_backend/application/models/users/get_user_data"
 	"chat_app_backend/application/models/users/login"
 	"chat_app_backend/application/models/users/refresh_token"
 	"chat_app_backend/application/models/users/register"
+	"chat_app_backend/application/models/users/update"
 	"chat_app_backend/internal/router"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/validator"
@@ -64,6 +66,42 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 				validator.
 					Validator[refresh_token.RefreshTokenRequestDto]{},
 				router.POST,
+			),
+			router.RouteFactory(
+				router.Authorized,
+				serviceWrapper,
+				"/",
+				users.DeleteUserHandler{}.Handle,
+				validator.
+					Validator[delete2.DeleteUserRequestDto]{},
+				router.DELETE,
+			),
+			router.RouteFactory(
+				router.Authorized,
+				serviceWrapper,
+				"/",
+				users.UpdateUserHandler{}.Handle,
+				validator.
+					Validator[update.UpdateUserRequestDto]{}.
+					AttachValidator(func(data *update.UpdateUserRequestDto) error {
+						if data.PasswordString == nil {
+							return nil
+						}
+						return validators.ValidatePassword(*data.PasswordString)
+					}).
+					AttachValidator(func(data *update.UpdateUserRequestDto) error {
+						if data.Email == nil {
+							return nil
+						}
+						return validators.ValidateEmail(*data.Email)
+					}).
+					AttachValidator(func(data *update.UpdateUserRequestDto) error {
+						if data.Birthday == nil {
+							return nil
+						}
+						return validators.ValidateBirthDate(*data.Birthday)
+					}),
+				router.PUT,
 			),
 		},
 	)
