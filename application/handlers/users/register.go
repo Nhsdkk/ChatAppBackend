@@ -10,8 +10,6 @@ import (
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"time"
 )
 
 type RegisterHandler struct{}
@@ -51,7 +49,7 @@ func (r RegisterHandler) Handle(
 				return assignInterestError
 			}
 
-			interests, getInterestsError := queries.GetManyInterestsById(ctx, request.Interests)
+			interests, getInterestsError := queries.GetUserInterests(ctx, user.ID)
 			if getInterestsError != nil {
 				return getInterestsError
 			}
@@ -60,8 +58,8 @@ func (r RegisterHandler) Handle(
 
 			for idx, interest := range interests {
 				err := mapper.Mapper{}.Map(
-					interest,
 					&interestsMapped[idx],
+					interest,
 				)
 
 				if err != nil {
@@ -70,7 +68,7 @@ func (r RegisterHandler) Handle(
 			}
 
 			var claims jwt_claims.UserClaims
-			mappingErr := mapper.Mapper{}.Map(user, &claims)
+			mappingErr := mapper.Mapper{}.Map(&claims, user)
 			if mappingErr != nil {
 				return mappingErr
 			}
@@ -84,40 +82,16 @@ func (r RegisterHandler) Handle(
 			}
 
 			mappingError := mapper.Mapper{}.Map(
-				struct {
-					ID             uuid.UUID
-					FullName       string
-					Birthday       time.Time
-					Gender         db_queries.Gender
-					Email          string
-					Password       []byte
-					AvatarFileName string
-					Online         bool
-					EmailVerified  bool
-					LastSeen       time.Time
-					CreatedAt      time.Time
-					UpdatedAt      time.Time
-					Interests      []interests2.GetInterestsDto
-					AccessToken    string
-					RefreshToken   string
-				}{
-					ID:             user.ID,
-					FullName:       user.FullName,
-					Birthday:       user.Birthday,
-					Gender:         user.Gender,
-					Email:          user.Email,
-					Password:       user.Password,
-					AvatarFileName: user.AvatarFileName,
-					Online:         user.Online,
-					EmailVerified:  user.EmailVerified,
-					LastSeen:       user.LastSeen,
-					CreatedAt:      user.CreatedAt,
-					UpdatedAt:      user.UpdatedAt,
-					Interests:      interestsMapped,
-					AccessToken:    accessToken.GetToken(),
-					RefreshToken:   refreshToken.GetToken(),
-				},
 				&response,
+				struct {
+					Interests    []interests2.GetInterestsDto
+					AccessToken  string
+					RefreshToken string
+				}{
+					Interests:    interestsMapped,
+					AccessToken:  accessToken.GetToken(),
+					RefreshToken: refreshToken.GetToken(),
+				},
 			)
 
 			if mappingError != nil {

@@ -10,27 +10,42 @@ import (
 type IDest struct{}
 
 type IMapper interface {
-	Map(src interface{}, dest interface{}) error
+	Map(dest interface{}, srcs ...interface{}) error
 }
 
 type Mapper struct{}
 
-func (m Mapper) Map(src interface{}, dest interface{}) error {
-	srcVal := reflect.ValueOf(src)
+func (m Mapper) Map(dest interface{}, srcs ...interface{}) error {
+	srcVals := make([]reflect.Value, 0)
+	valNamesExistence := make(map[string]bool)
+
+	for _, src := range srcs {
+		srcVal := reflect.ValueOf(src)
+		if mapper.IsPointerType(srcVal.Type()) {
+			return errors.New("src should not be a pointer")
+		}
+
+		for fieldIdx := range srcVal.NumField() {
+			field := srcVal.Type().Field(fieldIdx)
+			if _, ok := valNamesExistence[field.Name]; ok {
+				return errors.New(fmt.Sprintf("name collision found as field %s exists in more than one struct", field.Name))
+			}
+			valNamesExistence[field.Name] = true
+		}
+
+		srcVals = append(srcVals, srcVal)
+	}
+
 	destVal := reflect.ValueOf(dest)
 
 	if !mapper.IsPointerType(destVal.Type()) {
 		return errors.New("dest should be a pointer")
 	}
 
-	if mapper.IsPointerType(srcVal.Type()) {
-		return errors.New("src should not be a pointer")
-	}
-
-	return mapStruct(srcVal, destVal)
+	return mapStruct(destVal, srcVals...)
 }
 
-func mapStruct(srcVal reflect.Value, destVal reflect.Value) error {
+func mapStruct(destVal reflect.Value, srcVals ...reflect.Value) error {
 	if !mapper.IsPointerType(destVal.Type()) {
 		return errors.New("dest is not a pointer")
 	}
@@ -39,14 +54,10 @@ func mapStruct(srcVal reflect.Value, destVal reflect.Value) error {
 
 	for fieldIdx := range destVal.NumField() {
 		destField := destVal.Field(fieldIdx)
-		srcField := srcVal.FieldByName(destVal.Type().Field(fieldIdx).Name)
+		srcField, err := findValue(destVal.Type().Field(fieldIdx), srcVals...)
 
-		if !srcField.IsValid() {
-			return errors.New(fmt.Sprintf("src does not have field %s, which dest has", destVal.Type().Field(fieldIdx).Name))
-		}
-
-		if !mapper.SameTypes(srcField.Type(), destField.Type()) {
-			return errors.New(fmt.Sprintf("kinds of values does not match (%s and %s", srcVal.Kind(), destVal.Kind()))
+		if err != nil {
+			return err
 		}
 
 		if !destField.CanSet() {
@@ -54,19 +65,41 @@ func mapStruct(srcVal reflect.Value, destVal reflect.Value) error {
 		}
 
 		if mapper.IsArrayType(destField.Type()) {
-			mapArray(srcField, destField.Addr())
+			mapArray(*srcField, destField.Addr())
 			continue
 		}
 
 		if mapper.IsSliceType(destField.Type()) {
-			mapSlice(srcField, destField.Addr())
+			mapSlice(*srcField, destField.Addr())
 			continue
 		}
 
-		destField.Set(srcField)
+		destField.Set(*srcField)
 	}
 
 	return nil
+}
+
+func findValue(field reflect.StructField, srcVals ...reflect.Value) (*reflect.Value, error) {
+	for _, srcVal := range srcVals {
+		srcField := srcVal.FieldByName(field.Name)
+
+		if !srcField.IsValid() {
+			continue
+		}
+
+		if !mapper.SameTypes(srcField.Type(), field.Type) {
+			return nil, errors.New(fmt.Sprintf("kinds of values does not match (%s and %s)", srcField.Kind(), field.Type.Kind()))
+		}
+
+		if !srcField.CanInterface() {
+			return nil, errors.New(fmt.Sprintf("src field is unexported"))
+		}
+
+		return &srcField, nil
+	}
+
+	return nil, errors.New(fmt.Sprintf("src does not have field %s, which dest has", field.Name))
 }
 
 func mapArray(srcVal reflect.Value, destVal reflect.Value) {
