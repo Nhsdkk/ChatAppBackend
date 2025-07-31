@@ -95,6 +95,44 @@ func (q *Queries) GetManyInterestsById(ctx context.Context, ids []uuid.UUID) ([]
 	return items, nil
 }
 
+const getUserInterests = `-- name: GetUserInterests :many
+SELECT 
+    interests.id,
+    interests.title,
+    interests.icon_file_name,
+    interests.created_at,
+    interests.updated_at
+FROM interests
+JOIN user_interests on interests.id = user_interests.interest_id
+WHERE user_interests.user_id = $1
+`
+
+func (q *Queries) GetUserInterests(ctx context.Context, id uuid.UUID) ([]Interest, error) {
+	rows, err := q.db.Query(ctx, getUserInterests, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Interest
+	for rows.Next() {
+		var i Interest
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.IconFileName,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeUserInterest = `-- name: RemoveUserInterest :exec
 DELETE FROM user_interests
 WHERE

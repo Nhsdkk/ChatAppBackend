@@ -2,6 +2,17 @@
 SELECT * FROM interests
 WHERE interests.id = ANY(@ids::uuid[]);
 
+-- name: GetUserInterests :many
+SELECT 
+    interests.id,
+    interests.title,
+    interests.icon_file_name,
+    interests.created_at,
+    interests.updated_at
+FROM interests
+JOIN user_interests on interests.id = user_interests.interest_id
+WHERE user_interests.user_id = @id;
+
 -- name: AssignInterestsToUser :exec
 INSERT INTO user_interests
 (user_id, interest_id)

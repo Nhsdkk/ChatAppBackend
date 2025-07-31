@@ -3,6 +3,10 @@ sql:
   - engine: "postgresql"
     queries: "./queries"
     schema: "./migrations"
+    database:
+      uri: "${DATABASE_URI}"
+    rules:
+      - sqlc/db-prepare
     gen:
       go:
         package: "db_queries"
