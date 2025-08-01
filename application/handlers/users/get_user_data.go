@@ -7,18 +7,42 @@ import (
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/service_wrapper"
+	"chat_app_backend/internal/sqlc/db_queries"
+	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 )
 
 type GetUserDataHandler struct{}
 
 func (g GetUserDataHandler) Handle(
-	_ *get_user_data.GetUserDataRequestDto,
+	request *get_user_data.GetUserDataRequestDto,
 	services service_wrapper.IServiceWrapper,
 	ctx *gin.Context,
 	requestEnvironment *request_env.RequestEnv,
 ) (*get_user_data.GetUserDataResponseDto, error) {
-	interestsRaw, interestsQueryError := services.GetDbConnection().GetQueries().GetUserInterests(ctx, requestEnvironment.User.ID)
+	requestingUser := *requestEnvironment.User
+	if requestingUser.Role == db_queries.RoleTypeUSER && requestingUser.ID != request.ID {
+		return nil, exception.ForbiddenException{
+			Err: errors.New(fmt.Sprintf("can't get user with id %s", request.ID)),
+		}
+	}
+
+	user, userQueryError := services.GetDbConnection().GetQueries().GetUserById(ctx, request.ID)
+
+	switch {
+	case userQueryError != nil && errors.Is(userQueryError, pgx.ErrNoRows):
+		return nil, exception.ResourceNotFoundException{
+			Err: errors.New("user not found"),
+		}
+	case userQueryError != nil:
+		return nil, exception.ServerException{
+			Err: userQueryError,
+		}
+	}
+
+	interestsRaw, interestsQueryError := services.GetDbConnection().GetQueries().GetUserInterests(ctx, request.ID)
 	if interestsQueryError != nil {
 		return nil, exception.ServerException{
 			Err: interestsQueryError,
@@ -42,7 +66,7 @@ func (g GetUserDataHandler) Handle(
 	var response get_user_data.GetUserDataResponseDto
 	_ = mapper.Mapper{}.Map(
 		&response,
-		*requestEnvironment.User,
+		user,
 		struct {
 			Interests []interests2.GetInterestsDto
 		}{

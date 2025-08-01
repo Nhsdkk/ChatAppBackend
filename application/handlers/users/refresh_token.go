@@ -43,6 +43,12 @@ func (r RefreshTokenHandler) Handle(
 		return nil, err
 	}
 
+	if !validToken.GetClaims().Equals(&user) {
+		return nil, exception.UnauthorizedException{
+			Err: errors.New("claims and user data does not match"),
+		}
+	}
+
 	accessToken, accessTokenGenerationError := validToken.RefreshRelatedAccessToken(service.GetJwtHandler())
 	if accessTokenGenerationError != nil {
 		return nil, accessTokenGenerationError

@@ -83,6 +83,7 @@ func (r RegisterHandler) Handle(
 
 			mappingError := mapper.Mapper{}.Map(
 				&response,
+				user,
 				struct {
 					Interests    []interests2.GetInterestsDto
 					AccessToken  string

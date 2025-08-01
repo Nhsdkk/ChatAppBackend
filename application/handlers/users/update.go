@@ -9,8 +9,9 @@ import (
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
+	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type UpdateUserHandler struct{}
@@ -22,6 +23,12 @@ func (u UpdateUserHandler) Handle(
 	requestEnvironment *request_env.RequestEnv,
 ) (*update.UpdateUserResponseDto, error) {
 	user := *requestEnvironment.User
+
+	if user.Role == db_queries.RoleTypeUSER && (user.ID != request.ID || request.Role != nil) {
+		return nil, exception.ForbiddenException{
+			Err: errors.New(fmt.Sprintf("can't update user with id %s", request.ID)),
+		}
+	}
 
 	var updateUserParams db_queries.UpdateUserParams
 
@@ -37,21 +44,28 @@ func (u UpdateUserHandler) Handle(
 		nullGender.Valid = true
 	}
 
+	nullRole := db_queries.NullRoleType{}
+	if request.Role != nil {
+		nullRole.RoleType = *request.Role
+		nullRole.Valid = true
+	}
+
 	mapperError := mapper.Mapper{}.Map(
 		&updateUserParams,
 		*request,
 		struct {
-			ID             uuid.UUID
 			Password       *[]byte
 			AvatarFileName *string
 			Gender         db_queries.NullGender
+			Role           db_queries.NullRoleType
 			Online         *bool
 		}{
-			ID:             user.ID,
-			Password:       newPasswordBytes,
+			Password: newPasswordBytes,
+			//TODO: add avatar upload
 			AvatarFileName: nil,
 			Gender:         nullGender,
 			Online:         nil,
+			Role:           nullRole,
 		},
 	)
 
