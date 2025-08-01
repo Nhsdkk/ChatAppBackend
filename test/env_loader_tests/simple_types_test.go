@@ -8,10 +8,25 @@ import (
 	"testing"
 )
 
+type enumStringType string
+type enumIntType int
+
+const (
+	V1 enumStringType = "v1"
+	V2                = "v2"
+)
+
+const (
+	V11 enumIntType = iota
+	v22
+)
+
 type testStructEnvSimpleTypes struct {
-	IntVal    int     `env:"int_val"`
-	FloatVal  float32 `env:"float_val"`
-	StringVal string  `env:"string_val"`
+	IntVal         int            `env:"int_val"`
+	FloatVal       float32        `env:"float_val"`
+	StringVal      string         `env:"string_val"`
+	EnumIntVal     enumIntType    `env:"enum_int_val"`
+	EnumStringType enumStringType `env:"enum_string_val"`
 }
 
 func TestEnvLoader_SimpleTypes_ShouldWorkWhenUsingEnvFileWithAbsolutePath(t *testing.T) {
@@ -26,6 +41,8 @@ func TestEnvLoader_SimpleTypes_ShouldWorkWhenUsingEnvFileWithAbsolutePath(t *tes
 	require.Equal(t, v.StringVal, "qweqweqweqw")
 	require.Equal(t, v.IntVal, 1)
 	require.Equal(t, v.FloatVal, float32(15.3))
+	require.EqualValues(t, v.EnumStringType, V2)
+	require.EqualValues(t, v.EnumIntVal, V11)
 }
 
 func TestEnvLoader_SimpleTypes_ShouldWorkWhenUsingEnvFileWithRelativePath(t *testing.T) {
@@ -39,13 +56,17 @@ func TestEnvLoader_SimpleTypes_ShouldWorkWhenUsingEnvFileWithRelativePath(t *tes
 	require.Equal(t, v.StringVal, "qweqweqweqw")
 	require.Equal(t, v.IntVal, 1)
 	require.Equal(t, v.FloatVal, float32(15.3))
+	require.EqualValues(t, v.EnumStringType, V2)
+	require.EqualValues(t, v.EnumIntVal, V11)
 }
 
 func TestEnvLoader_SimpleTypes_ShouldWorkWhenUsingEnvironment(t *testing.T) {
 	env := map[string]string{
-		"testStructEnvSimpleTypes_int_val":    "1",
-		"testStructEnvSimpleTypes_float_val":  "15.3",
-		"testStructEnvSimpleTypes_string_val": "qweqweqweqw",
+		"testStructEnvSimpleTypes_int_val":         "1",
+		"testStructEnvSimpleTypes_float_val":       "15.3",
+		"testStructEnvSimpleTypes_string_val":      "qweqweqweqw",
+		"testStructEnvSimpleTypes_enum_string_val": "v2",
+		"testStructEnvSimpleTypes_enum_int_val":    "0",
 	}
 
 	for k, v := range env {
@@ -63,4 +84,6 @@ func TestEnvLoader_SimpleTypes_ShouldWorkWhenUsingEnvironment(t *testing.T) {
 	require.Equal(t, v.StringVal, "qweqweqweqw")
 	require.Equal(t, v.IntVal, 1)
 	require.Equal(t, v.FloatVal, float32(15.3))
+	require.EqualValues(t, v.EnumStringType, V2)
+	require.EqualValues(t, v.EnumIntVal, V11)
 }
