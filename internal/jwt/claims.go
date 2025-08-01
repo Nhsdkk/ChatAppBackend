@@ -27,7 +27,7 @@ func (claims Claims[T]) appendMetadataToClaims(
 
 	expireTimeout, durationParseErr := time.ParseDuration(expireTimeoutString)
 	if durationParseErr != nil {
-		panic(fmt.Sprintf("can't parse duration from %s", cfg.ExpireTimeoutAccess))
+		panic(fmt.Sprintf("can't parse duration from %s", expireTimeoutString))
 	}
 
 	claims.RegisteredClaims = jwt.RegisteredClaims{

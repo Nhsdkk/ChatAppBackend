@@ -31,7 +31,7 @@ func (r RegisterHandler) Handle(
 				Gender:   request.Gender,
 				Email:    request.Email,
 				Password: password.HashPassword(request.Password),
-				// TODO: fill with real avatar
+				// TODO(issue #5): fill with real avatar
 				AvatarFileName: "avatar.png",
 			}
 

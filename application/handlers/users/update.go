@@ -61,7 +61,7 @@ func (u UpdateUserHandler) Handle(
 			Online         *bool
 		}{
 			Password: newPasswordBytes,
-			//TODO: add avatar upload
+			//TODO(issue #5): add avatar upload
 			AvatarFileName: nil,
 			Gender:         nullGender,
 			Online:         nil,
