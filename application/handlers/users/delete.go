@@ -5,19 +5,28 @@ import (
 	delete2 "chat_app_backend/application/models/users/delete"
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/service_wrapper"
+	"chat_app_backend/internal/sqlc/db_queries"
+	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
 type DeleteUserHandler struct{}
 
 func (d DeleteUserHandler) Handle(
-	_ *delete2.DeleteUserRequestDto,
+	request *delete2.DeleteUserRequestDto,
 	service service_wrapper.IServiceWrapper,
 	ctx *gin.Context,
 	requestEnvironment *request_env.RequestEnv,
 ) (*delete2.DeleteUserResponseDto, error) {
 	user := *requestEnvironment.User
-	userDeletionError := service.GetDbConnection().GetQueries().RemoveUser(ctx, user.ID)
+	if user.Role == db_queries.RoleTypeUSER && user.ID != request.ID {
+		return nil, exception.ForbiddenException{
+			Err: errors.New(fmt.Sprintf("can't delete user with id %s", request.ID)),
+		}
+	}
+
+	userDeletionError := service.GetDbConnection().GetQueries().RemoveUser(ctx, request.ID)
 	if userDeletionError != nil {
 		return nil, exception.ServerException{
 			Err: userDeletionError,

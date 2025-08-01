@@ -12,10 +12,22 @@ type Claims[T interface{}] struct {
 	jwt.RegisteredClaims
 }
 
-func (claims *Claims[T]) appendMetadataToClaims(cfg *JwtConfig) *Claims[T] {
-	expireTimeout, durationParseErr := time.ParseDuration(cfg.ExpireTimeout)
+func (claims Claims[T]) appendMetadataToClaims(
+	cfg *JwtConfig,
+	tokenType TokenType,
+) Claims[T] {
+	var expireTimeoutString string
+
+	switch tokenType {
+	case RefreshToken:
+		expireTimeoutString = cfg.ExpireTimeoutRefresh
+	case AccessToken:
+		expireTimeoutString = cfg.ExpireTimeoutAccess
+	}
+
+	expireTimeout, durationParseErr := time.ParseDuration(expireTimeoutString)
 	if durationParseErr != nil {
-		panic(fmt.Sprintf("can't parse duration from %s", cfg.ExpireTimeout))
+		panic(fmt.Sprintf("can't parse duration from %s", expireTimeoutString))
 	}
 
 	claims.RegisteredClaims = jwt.RegisteredClaims{
@@ -27,8 +39,8 @@ func (claims *Claims[T]) appendMetadataToClaims(cfg *JwtConfig) *Claims[T] {
 	return claims
 }
 
-func CreateClaimsFromData[T interface{}](data T) (claims *Claims[T]) {
-	claims = &Claims[T]{}
+func CreateClaimsFromData[T interface{}](data T) Claims[T] {
+	claims := Claims[T]{}
 	claims.Data = data
 
 	return claims

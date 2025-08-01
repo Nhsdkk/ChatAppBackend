@@ -6,12 +6,17 @@ import (
 )
 
 type UserClaims struct {
-	ID            uuid.UUID `json:"id"`
-	FullName      string    `json:"full_name"`
-	Email         string    `json:"email"`
-	EmailVerified bool      `json:"email_verified"`
+	ID            uuid.UUID           `json:"id"`
+	FullName      string              `json:"full_name"`
+	Email         string              `json:"email"`
+	Role          db_queries.RoleType `json:"role"`
+	EmailVerified bool                `json:"email_verified"`
 }
 
 func (uc *UserClaims) Equals(user *db_queries.User) bool {
-	return uc.ID == user.ID && uc.FullName == user.FullName && uc.Email == user.Email && uc.EmailVerified == user.EmailVerified
+	return uc.ID == user.ID &&
+		uc.FullName == user.FullName &&
+		uc.Email == user.Email &&
+		uc.EmailVerified == user.EmailVerified &&
+		uc.Role == user.Role
 }

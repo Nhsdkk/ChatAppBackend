@@ -17,7 +17,7 @@ INSERT INTO users
 (full_name, birthday, gender, email, password, avatar_file_name, online)
 VALUES
 ($1, $2, $3::gender, $4, $5, $6, true)
-RETURNING id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at
+RETURNING id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at, role
 `
 
 type CreateUserParams struct {
@@ -52,12 +52,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.LastSeen,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at
+SELECT id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at, role
 FROM users
 WHERE users.email = $1
 LIMIT 1
@@ -79,12 +80,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.LastSeen,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at
+SELECT id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at, role
 FROM users
 WHERE users.id = $1
 `
@@ -105,6 +107,7 @@ func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.LastSeen,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
@@ -129,13 +132,14 @@ SET
     email = coalesce($5, email),
     password = coalesce($6, password),
     avatar_file_name = coalesce($7, avatar_file_name),
+    role = coalesce($8, role),
     email_verified = case
         when $5 is null then email_verified
         else false
     end,
     updated_at = now()
-WHERE users.id = $8
-RETURNING id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at
+WHERE users.id = $9
+RETURNING id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at, role
 `
 
 type UpdateUserParams struct {
@@ -146,6 +150,7 @@ type UpdateUserParams struct {
 	Email          *string
 	Password       *[]byte
 	AvatarFileName *string
+	Role           NullRoleType
 	ID             uuid.UUID
 }
 
@@ -158,6 +163,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		arg.Email,
 		arg.Password,
 		arg.AvatarFileName,
+		arg.Role,
 		arg.ID,
 	)
 	var i User
@@ -174,6 +180,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.LastSeen,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }

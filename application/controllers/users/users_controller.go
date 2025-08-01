@@ -52,7 +52,7 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 			router.RouteFactory(
 				router.Authorized,
 				serviceWrapper,
-				"/",
+				"/:id",
 				users.GetUserDataHandler{}.Handle,
 				validator.
 					Validator[get_user_data.GetUserDataRequestDto]{},
@@ -70,7 +70,7 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 			router.RouteFactory(
 				router.Authorized,
 				serviceWrapper,
-				"/",
+				"/:id",
 				users.DeleteUserHandler{}.Handle,
 				validator.
 					Validator[delete2.DeleteUserRequestDto]{},
@@ -79,7 +79,7 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 			router.RouteFactory(
 				router.Authorized,
 				serviceWrapper,
-				"/",
+				"/:id",
 				users.UpdateUserHandler{}.Handle,
 				validator.
 					Validator[update.UpdateUserRequestDto]{}.

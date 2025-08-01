@@ -26,6 +26,7 @@ SET
     email = coalesce(sqlc.narg('email'), email),
     password = coalesce(sqlc.narg('password'), password),
     avatar_file_name = coalesce(sqlc.narg('avatar_file_name'), avatar_file_name),
+    role = coalesce(sqlc.narg('role'), role),
     email_verified = case
         when sqlc.narg('email') is null then email_verified
         else false

@@ -19,5 +19,6 @@ type GetUserDataResponseDto struct {
 	LastSeen       time.Time                   `json:"last_seen"`
 	CreatedAt      time.Time                   `json:"created_at"`
 	UpdatedAt      time.Time                   `json:"updated_at"`
+	Role           db_queries.RoleType         `json:"role"`
 	Interests      []interests.GetInterestsDto `json:"interests"`
 }

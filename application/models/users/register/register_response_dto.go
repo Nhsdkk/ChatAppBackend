@@ -20,6 +20,7 @@ type RegisterResponseDto struct {
 	CreatedAt      time.Time                   `json:"created_at"`
 	UpdatedAt      time.Time                   `json:"updated_at"`
 	Interests      []interests.GetInterestsDto `json:"interests"`
+	Role           db_queries.RoleType         `json:"role"`
 	AccessToken    string                      `json:"access_token"`
 	RefreshToken   string                      `json:"refresh_token"`
 }

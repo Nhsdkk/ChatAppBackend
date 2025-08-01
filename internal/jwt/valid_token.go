@@ -16,13 +16,13 @@ func (token *ValidToken[T]) GetToken() string {
 
 func (token *ValidToken[T]) RefreshRelatedAccessToken(handler IHandler[T]) (*ValidToken[T], error) {
 	claims := CreateClaimsFromData(*token.claims).
-		appendMetadataToClaims(handler.getConfig())
+		appendMetadataToClaims(handler.getConfig(), AccessToken)
 
 	switch token.tokenType {
 	case AccessToken:
 		panic("can't refresh access token using access token")
 	case RefreshToken:
-		return handler.generateSingleToken(claims, AccessToken)
+		return handler.generateSingleToken(&claims, AccessToken)
 	}
 
 	panic("Unreachable")

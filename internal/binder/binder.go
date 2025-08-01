@@ -180,13 +180,13 @@ func convertStringToReflectType(v string, t reflect.Type) (interface{}, error) {
 	case reflect.UnsafePointer, reflect.Pointer, reflect.Uintptr:
 		return nil, errors.New(fmt.Sprintf("can't convert to %s", t.Kind()))
 	default:
-		if t.Implements(reflect.TypeFor[encoding.TextUnmarshaler]()) {
+		if reflect.PointerTo(t).Implements(reflect.TypeFor[encoding.TextUnmarshaler]()) {
 			result := reflect.New(t).Interface().(encoding.TextUnmarshaler)
 			if err := result.UnmarshalText([]byte(v)); err != nil {
 				return nil, err
 			}
 
-			return result, nil
+			return reflect.ValueOf(result).Elem().Interface(), nil
 		}
 
 		return nil, errors.New(fmt.Sprintf("can't convert to %s", t.Kind()))

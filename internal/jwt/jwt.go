@@ -24,7 +24,7 @@ func (handler *Handler[T]) generateSingleToken(claims *Claims[T], tokenType Toke
 		secret = []byte(handler.cfg.AccessSecret)
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.appendMetadataToClaims(handler.cfg))
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims.appendMetadataToClaims(handler.cfg, tokenType))
 	tokenString, generationError := token.SignedString(secret)
 	if generationError != nil {
 		return nil, generationError
@@ -39,12 +39,12 @@ func (handler *Handler[T]) getConfig() *JwtConfig {
 func (handler *Handler[T]) GenerateJwtPair(data T) (*ValidToken[T], *ValidToken[T], error) {
 	claims := CreateClaimsFromData(data)
 
-	accessToken, accessTokenGenerationError := handler.generateSingleToken(claims, AccessToken)
+	accessToken, accessTokenGenerationError := handler.generateSingleToken(&claims, AccessToken)
 	if accessTokenGenerationError != nil {
 		return nil, nil, accessTokenGenerationError
 	}
 
-	refreshToken, refreshTokenGenerationError := handler.generateSingleToken(claims, RefreshToken)
+	refreshToken, refreshTokenGenerationError := handler.generateSingleToken(&claims, RefreshToken)
 	if refreshTokenGenerationError != nil {
 		return nil, nil, refreshTokenGenerationError
 	}
