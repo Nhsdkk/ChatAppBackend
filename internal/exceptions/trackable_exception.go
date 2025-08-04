@@ -5,7 +5,12 @@ import (
 	"runtime"
 )
 
+// TraceCallOffset defines how many stack frames to skip.
+// In our case its set to 3, because we need to skip getCallers, getTrace and factory functions.
 const TraceCallOffset = 3
+
+// TraceBufferSize defines the buffer size for stack frames.
+// It's set to reasonable amount of 32 stack frames.
 const TraceBufferSize = 32
 
 type ITrackableException interface {
