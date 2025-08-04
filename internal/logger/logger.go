@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"chat_app_backend/internal/exceptions"
 	"fmt"
 	"io"
 	"log"
@@ -9,7 +10,7 @@ import (
 type ILogger interface {
 	CreateInfoMessage(msg string) ILogMessage
 	CreateInfoMessageF(format string, args ...interface{}) ILogMessage
-	CreateErrorMessage(err error) ILogMessage
+	CreateErrorMessage(err exceptions.ITrackableException) ILogMessage
 	CreateWarningMessage(msg string) ILogMessage
 	CreateWarningMessageF(format string, args ...interface{}) ILogMessage
 	CreateDebugMessage(msg string) ILogMessage
@@ -39,11 +40,13 @@ func (l Logger) CreateInfoMessageF(format string, args ...interface{}) ILogMessa
 	}
 }
 
-func (l Logger) CreateErrorMessage(err error) ILogMessage {
+func (l Logger) CreateErrorMessage(err exceptions.ITrackableException) ILogMessage {
+	stackTrace := err.GetStackTrace()
 	return &LogMessage{
-		message:  err.Error(),
-		logger:   l.error,
-		modifier: None,
+		message:    err.Error(),
+		stackTrace: &stackTrace,
+		logger:     l.error,
+		modifier:   None,
 	}
 }
 

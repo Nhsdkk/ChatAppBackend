@@ -21,10 +21,6 @@ func (controller Controller) ConfigureGroup() {
 	}
 }
 
-func (controller Controller) getRouter() *gin.Engine {
-	return controller.router
-}
-
 func CreateController(router *gin.Engine, controllerPath string, routes []IRoute) (controller Controller) {
 	controller.router = router
 	controller.controllerPath = controllerPath

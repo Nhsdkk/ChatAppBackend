@@ -1,10 +1,11 @@
 package users
 
 import (
-	"chat_app_backend/application/models/exception"
 	interests2 "chat_app_backend/application/models/interests/get_many_by_ids"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/application/models/users/login"
+	"chat_app_backend/internal/exceptions"
+	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/password"
 	"chat_app_backend/internal/request_env"
@@ -21,29 +22,34 @@ func (l LoginHandler) Handle(
 	service service_wrapper.IServiceWrapper,
 	ctx *gin.Context,
 	_ *request_env.RequestEnv,
-) (*login.LoginResponseDto, error) {
+) (*login.LoginResponseDto, exceptions.ITrackableException) {
 	user, userExistenceError := service.GetDbConnection().GetQueries().GetUserByEmail(ctx, request.Email)
 
 	switch {
-	case userExistenceError != nil && errors.Is(userExistenceError, pgx.ErrNoRows):
-		return nil, exception.InvalidBodyException{
-			Err: errors.New("invalid credentials"),
+	case errors.Is(userExistenceError, pgx.ErrNoRows):
+		return nil, common_exceptions.InvalidBodyException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.WrapErrorWithTrackableException(userExistenceError),
+				Message:             "invalid credentials",
+			},
 		}
 	case userExistenceError != nil:
-		return nil, userExistenceError
+		return nil, exceptions.WrapErrorWithTrackableException(userExistenceError)
 	}
 
 	if !password.ComparePassword(request.Password, user.Password) {
-		return nil, exception.InvalidBodyException{
-			Err: errors.New("invalid credentials"),
+		message := "invalid credentials"
+		return nil, common_exceptions.InvalidBodyException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+				Message:             message,
+			},
 		}
 	}
 
 	interestsRaw, interestsQueryError := service.GetDbConnection().GetQueries().GetUserInterests(ctx, user.ID)
 	if interestsQueryError != nil {
-		return nil, exception.ServerException{
-			Err: interestsQueryError,
-		}
+		return nil, exceptions.WrapErrorWithTrackableException(interestsQueryError)
 	}
 
 	interests := make([]interests2.GetInterestsDto, len(interestsRaw))
@@ -54,9 +60,7 @@ func (l LoginHandler) Handle(
 		)
 
 		if mapperError != nil {
-			return nil, exception.ServerException{
-				Err: mapperError,
-			}
+			return nil, exceptions.WrapErrorWithTrackableException(mapperError)
 		}
 	}
 
@@ -64,12 +68,12 @@ func (l LoginHandler) Handle(
 
 	mappingErr := mapper.Mapper{}.Map(&userClaims, user)
 	if mappingErr != nil {
-		return nil, mappingErr
+		return nil, exceptions.WrapErrorWithTrackableException(mappingErr)
 	}
 
 	accessToken, refreshToken, tokenGenerationError := service.GetJwtHandler().GenerateJwtPair(userClaims)
 	if tokenGenerationError != nil {
-		return nil, tokenGenerationError
+		return nil, exceptions.WrapErrorWithTrackableException(tokenGenerationError)
 	}
 
 	var response login.LoginResponseDto
@@ -89,7 +93,7 @@ func (l LoginHandler) Handle(
 	)
 
 	if mappingErr != nil {
-		return nil, mappingErr
+		return nil, exceptions.WrapErrorWithTrackableException(mappingErr)
 	}
 
 	return &response, nil

@@ -4,6 +4,7 @@ import (
 	interests2 "chat_app_backend/application/models/interests/get_many_by_ids"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/application/models/users/register"
+	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/password"
 	"chat_app_backend/internal/request_env"
@@ -19,12 +20,12 @@ func (r RegisterHandler) Handle(
 	services service_wrapper.IServiceWrapper,
 	ctx *gin.Context,
 	_ *request_env.RequestEnv,
-) (*register.RegisterResponseDto, error) {
+) (*register.RegisterResponseDto, exceptions.ITrackableException) {
 	var response register.RegisterResponseDto
 
 	transactionError := services.
 		GetDbConnection().
-		CreateTransaction(ctx, func(queries *db_queries.Queries) error {
+		CreateTransaction(ctx, func(queries *db_queries.Queries) exceptions.ITrackableException {
 			createUserParams := db_queries.CreateUserParams{
 				FullName: request.FullName,
 				Birthday: request.Birthday,
@@ -37,7 +38,7 @@ func (r RegisterHandler) Handle(
 
 			user, createUserError := queries.CreateUser(ctx, createUserParams)
 			if createUserError != nil {
-				return createUserError
+				return exceptions.WrapErrorWithTrackableException(createUserError)
 			}
 
 			assignInterestsParams := db_queries.AssignInterestsToUserParams{
@@ -46,12 +47,12 @@ func (r RegisterHandler) Handle(
 			}
 
 			if assignInterestError := queries.AssignInterestsToUser(ctx, assignInterestsParams); assignInterestError != nil {
-				return assignInterestError
+				return exceptions.WrapErrorWithTrackableException(assignInterestError)
 			}
 
 			interests, getInterestsError := queries.GetUserInterests(ctx, user.ID)
 			if getInterestsError != nil {
-				return getInterestsError
+				return exceptions.WrapErrorWithTrackableException(getInterestsError)
 			}
 
 			interestsMapped := make([]interests2.GetInterestsDto, len(interests))
@@ -63,14 +64,14 @@ func (r RegisterHandler) Handle(
 				)
 
 				if err != nil {
-					return err
+					return exceptions.WrapErrorWithTrackableException(err)
 				}
 			}
 
 			var claims jwt_claims.UserClaims
 			mappingErr := mapper.Mapper{}.Map(&claims, user)
 			if mappingErr != nil {
-				return mappingErr
+				return exceptions.WrapErrorWithTrackableException(mappingErr)
 			}
 
 			accessToken, refreshToken, tokenGenerationError := services.
@@ -78,7 +79,7 @@ func (r RegisterHandler) Handle(
 				GenerateJwtPair(claims)
 
 			if tokenGenerationError != nil {
-				return tokenGenerationError
+				return exceptions.WrapErrorWithTrackableException(tokenGenerationError)
 			}
 
 			mappingError := mapper.Mapper{}.Map(
@@ -96,7 +97,7 @@ func (r RegisterHandler) Handle(
 			)
 
 			if mappingError != nil {
-				return mappingError
+				return exceptions.WrapErrorWithTrackableException(mappingError)
 			}
 
 			return nil

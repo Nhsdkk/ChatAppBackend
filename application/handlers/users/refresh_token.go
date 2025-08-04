@@ -1,8 +1,9 @@
 package users
 
 import (
-	"chat_app_backend/application/models/exception"
 	"chat_app_backend/application/models/users/refresh_token"
+	"chat_app_backend/internal/exceptions"
+	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/jwt"
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/request_env"
@@ -19,13 +20,16 @@ func (r RefreshTokenHandler) Handle(
 	service service_wrapper.IServiceWrapper,
 	ctx *gin.Context,
 	_ *request_env.RequestEnv,
-) (*refresh_token.RefreshTokenResponseDto, error) {
+) (*refresh_token.RefreshTokenResponseDto, exceptions.ITrackableException) {
 	token := jwt.CreateTokenFromHandlerAndString(service.GetJwtHandler(), request.RefreshToken, jwt.RefreshToken)
 
 	validToken, validationErr := token.Validate()
 	if validationErr != nil {
-		return nil, &exception.UnauthorizedException{
-			Err: validationErr,
+		return nil, common_exceptions.UnauthorizedException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.WrapErrorWithTrackableException(validationErr),
+				Message:             "",
+			},
 		}
 	}
 
@@ -35,23 +39,30 @@ func (r RefreshTokenHandler) Handle(
 		GetUserById(ctx, validToken.GetClaims().ID)
 
 	switch {
-	case err != nil && errors.Is(err, pgx.ErrNoRows):
-		return nil, &exception.ResourceNotFoundException{
-			Err: errors.New("owner of the token not found"),
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil, common_exceptions.ResourceNotFoundException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.WrapErrorWithTrackableException(err),
+				Message:             "owner of the token not found",
+			},
 		}
 	case err != nil:
-		return nil, err
+		return nil, exceptions.WrapErrorWithTrackableException(err)
 	}
 
 	if !validToken.GetClaims().Equals(&user) {
-		return nil, exception.UnauthorizedException{
-			Err: errors.New("claims and user data does not match"),
+		message := "claims and user data does not match"
+		return nil, common_exceptions.UnauthorizedException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+				Message:             message,
+			},
 		}
 	}
 
 	accessToken, accessTokenGenerationError := validToken.RefreshRelatedAccessToken(service.GetJwtHandler())
 	if accessTokenGenerationError != nil {
-		return nil, accessTokenGenerationError
+		return nil, exceptions.WrapErrorWithTrackableException(accessTokenGenerationError)
 	}
 
 	var response refresh_token.RefreshTokenResponseDto
@@ -65,7 +76,7 @@ func (r RefreshTokenHandler) Handle(
 		},
 	)
 	if mappingErr != nil {
-		return nil, mappingErr
+		return nil, exceptions.WrapErrorWithTrackableException(mappingErr)
 	}
 
 	return &response, nil

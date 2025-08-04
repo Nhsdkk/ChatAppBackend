@@ -75,7 +75,7 @@ func (q *Queries) GetManyInterestsById(ctx context.Context, ids []uuid.UUID) ([]
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Interest
+	items := []Interest{}
 	for rows.Next() {
 		var i Interest
 		if err := rows.Scan(
@@ -113,7 +113,7 @@ func (q *Queries) GetUserInterests(ctx context.Context, id uuid.UUID) ([]Interes
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Interest
+	items := []Interest{}
 	for rows.Next() {
 		var i Interest
 		if err := rows.Scan(
