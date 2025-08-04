@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/service_wrapper"
 	"github.com/gin-gonic/gin"
 )
@@ -11,7 +12,7 @@ type IHandler[TRequest interface{}, TResponse interface{}, TEnv interface{}] int
 		service service_wrapper.IServiceWrapper,
 		ctx *gin.Context,
 		requestEnvironment *TEnv,
-	) (*TResponse, error)
+	) (*TResponse, exceptions.ITrackableException)
 }
 
 type HFunc[TRequest interface{}, TResponse interface{}, TEnv interface{}] = func(
@@ -19,4 +20,4 @@ type HFunc[TRequest interface{}, TResponse interface{}, TEnv interface{}] = func
 	service service_wrapper.IServiceWrapper,
 	ctx *gin.Context,
 	requestEnvironment *TEnv,
-) (*TResponse, error)
+) (*TResponse, exceptions.ITrackableException)

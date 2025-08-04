@@ -1,6 +1,11 @@
 package logger
 
-import "log"
+import (
+	"chat_app_backend/internal/exceptions"
+	"fmt"
+	"log"
+	"strings"
+)
 
 type LogModifier int
 
@@ -17,9 +22,10 @@ type ILogMessage interface {
 }
 
 type LogMessage struct {
-	message  string
-	logger   *log.Logger
-	modifier LogModifier
+	message    string
+	stackTrace *[]exceptions.TracedFunction
+	logger     *log.Logger
+	modifier   LogModifier
 }
 
 func (l LogMessage) WithFatal() ILogMessage {
@@ -40,13 +46,27 @@ func (l LogMessage) WithPanic() ILogMessage {
 	return l
 }
 
+func formatStackTrace(stackTrace *[]exceptions.TracedFunction) string {
+	stackTraceStringSlice := make([]string, len(*stackTrace))
+	for idx, function := range *stackTrace {
+		stackTraceStringSlice[idx] = fmt.Sprintf("%s:%d (at %s function) ->", function.File, function.Line, function.Function)
+	}
+	return strings.Join(stackTraceStringSlice, "\n")
+}
+
 func (l LogMessage) Log() {
+	message := fmt.Sprintf("Message: %s", l.message)
+
+	if l.stackTrace != nil {
+		message += fmt.Sprintf("\nStack trace: %s", formatStackTrace(l.stackTrace))
+	}
+
 	switch l.modifier {
 	case None:
-		l.logger.Println(l.message)
+		l.logger.Println(message)
 	case Fatal:
-		l.logger.Fatalln(l.message)
+		l.logger.Fatalln(message)
 	case Panic:
-		l.logger.Panicln(l.message)
+		l.logger.Panicln(message)
 	}
 }

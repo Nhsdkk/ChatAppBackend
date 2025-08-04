@@ -1,12 +1,11 @@
 package middleware
 
 import (
-	"chat_app_backend/application/models/exception"
 	"chat_app_backend/application/models/jwt_claims"
+	"chat_app_backend/internal/exceptions"
+	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/jwt"
 	"chat_app_backend/internal/sqlc/db"
-	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"regexp"
 )
@@ -20,7 +19,16 @@ func AuthorizationMiddleware(jwtHandler jwt.IHandler[jwt_claims.UserClaims], db 
 		authorizationHeader, exists := ctx.Request.Header["Authorization"]
 
 		if !exists || !authorizationHeaderRegexp.MatchString(authorizationHeader[0]) {
-			_ = ctx.Error(exception.UnauthorizedException{Err: errors.New("access token format does not match")})
+			_ = ctx.Error(
+				common_exceptions.UnauthorizedException{
+					BaseRestException: exceptions.BaseRestException{
+						ITrackableException: exceptions.CreateTrackableExceptionFromStringF(
+							"access token format does not match",
+						),
+						Message: "",
+					},
+				},
+			)
 			ctx.Next()
 			return
 		}
@@ -28,7 +36,11 @@ func AuthorizationMiddleware(jwtHandler jwt.IHandler[jwt_claims.UserClaims], db 
 		groupIdx := authorizationHeaderRegexp.SubexpIndex("token")
 		matches := authorizationHeaderRegexp.FindStringSubmatch(authorizationHeader[0])
 		if groupIdx >= len(matches) {
-			_ = ctx.Error(exception.ServerException{Err: errors.New("access token matched, but token group not")})
+			_ = ctx.Error(
+				exceptions.CreateTrackableExceptionFromStringF(
+					"access token matched, but token group not",
+				),
+			)
 			ctx.Next()
 			return
 		}
@@ -36,7 +48,14 @@ func AuthorizationMiddleware(jwtHandler jwt.IHandler[jwt_claims.UserClaims], db 
 		token := jwt.CreateTokenFromHandlerAndString(jwtHandler, matches[groupIdx], jwt.AccessToken)
 		validToken, validationError := token.Validate()
 		if validationError != nil {
-			_ = ctx.Error(exception.UnauthorizedException{Err: validationError})
+			_ = ctx.Error(
+				common_exceptions.UnauthorizedException{
+					BaseRestException: exceptions.BaseRestException{
+						ITrackableException: exceptions.WrapErrorWithTrackableException(validationError),
+						Message:             "",
+					},
+				},
+			)
 			ctx.Next()
 			return
 		}
@@ -45,13 +64,14 @@ func AuthorizationMiddleware(jwtHandler jwt.IHandler[jwt_claims.UserClaims], db 
 
 		if userExistenceError != nil || !validToken.GetClaims().Equals(&user) {
 			_ = ctx.Error(
-				exception.UnauthorizedException{
-					Err: errors.New(
-						fmt.Sprintf(
+				common_exceptions.UnauthorizedException{
+					BaseRestException: exceptions.BaseRestException{
+						ITrackableException: exceptions.CreateTrackableExceptionFromStringF(
 							"user with id: %s no longer exists or related data does not match",
 							user.ID,
 						),
-					),
+						Message: "",
+					},
 				},
 			)
 			ctx.Next()

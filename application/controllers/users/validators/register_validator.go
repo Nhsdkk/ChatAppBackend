@@ -1,8 +1,8 @@
 package validators
 
 import (
-	"chat_app_backend/application/models/exception"
-	"errors"
+	"chat_app_backend/internal/exceptions"
+	"chat_app_backend/internal/exceptions/common_exceptions"
 	"fmt"
 	"regexp"
 	"time"
@@ -21,8 +21,12 @@ func ValidatePassword(password string) error {
 		!lowercaseLettersRegexp.MatchString(password) ||
 		!uppercaseLettersRegexp.MatchString(password) ||
 		!specialSymbolRegexp.MatchString(password) {
-		return exception.InvalidBodyException{
-			Err: errors.New("password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)"),
+		message := "password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)"
+		return common_exceptions.InvalidBodyException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+				Message:             message,
+			},
 		}
 	}
 
@@ -31,8 +35,12 @@ func ValidatePassword(password string) error {
 
 func ValidateEmail(email string) error {
 	if !emailRegexp.MatchString(email) {
-		return exception.InvalidBodyException{
-			Err: errors.New("email is of wrong format"),
+		message := "email is of wrong format"
+		return common_exceptions.InvalidBodyException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+				Message:             message,
+			},
 		}
 	}
 	return nil
@@ -41,8 +49,12 @@ func ValidateEmail(email string) error {
 func ValidateBirthDate(birthDate time.Time) error {
 	now := time.Now()
 	if birthDate.After(now) {
-		return exception.InvalidBodyException{
-			Err: errors.New("birth date can't be after today"),
+		message := "birth date can't be after today"
+		return common_exceptions.InvalidBodyException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+				Message:             message,
+			},
 		}
 	}
 
@@ -53,13 +65,16 @@ func ValidateBirthDate(birthDate time.Time) error {
 	}
 
 	if years < minAcceptableAge {
-		return exception.InvalidBodyException{
-			Err: errors.New(
-				fmt.Sprintf(
-					"you are not old enough to register as you should be older than %v to do it",
-					minAcceptableAge,
-				),
-			),
+		message := fmt.Sprintf(
+			"you are not old enough to register as you should be older than %v to do it",
+			minAcceptableAge,
+		)
+
+		return common_exceptions.InvalidBodyException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+				Message:             message,
+			},
 		}
 	}
 

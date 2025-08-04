@@ -1,7 +1,8 @@
 package middleware
 
 import (
-	"chat_app_backend/application/models/exception"
+	"chat_app_backend/internal/exceptions"
+	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/logger"
 	"errors"
 	"github.com/gin-gonic/gin"
@@ -19,14 +20,18 @@ func ErrorHandlerMiddleware(logger logger.ILogger) gin.HandlerFunc {
 			return
 		}
 
-		err := ctx.Errors.Last().Err
+		var err exceptions.ITrackableException
+		errors.As(ctx.Errors.Last().Err, &err)
 
-		var restException exception.IRestException
+		var restException exceptions.IRestException
 		switch {
 		case errors.As(err, &restException):
 		default:
-			restException = exception.ServerException{
-				Err: err,
+			restException = common_exceptions.ServerException{
+				BaseRestException: exceptions.BaseRestException{
+					ITrackableException: err,
+					Message:             "",
+				},
 			}
 		}
 

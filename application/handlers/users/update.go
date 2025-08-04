@@ -1,15 +1,15 @@
 package users
 
 import (
-	"chat_app_backend/application/models/exception"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/application/models/users/update"
+	"chat_app_backend/internal/exceptions"
+	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/password"
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 )
@@ -21,12 +21,16 @@ func (u UpdateUserHandler) Handle(
 	service service_wrapper.IServiceWrapper,
 	ctx *gin.Context,
 	requestEnvironment *request_env.RequestEnv,
-) (*update.UpdateUserResponseDto, error) {
+) (*update.UpdateUserResponseDto, exceptions.ITrackableException) {
 	user := *requestEnvironment.User
 
 	if user.Role == db_queries.RoleTypeUSER && (user.ID != request.ID || request.Role != nil) {
-		return nil, exception.ForbiddenException{
-			Err: errors.New(fmt.Sprintf("can't update user with id %s", request.ID)),
+		message := fmt.Sprintf("can't update user with id %s", request.ID)
+		return nil, common_exceptions.ForbiddenException{
+			BaseRestException: exceptions.BaseRestException{
+				ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+				Message:             message,
+			},
 		}
 	}
 
@@ -70,16 +74,12 @@ func (u UpdateUserHandler) Handle(
 	)
 
 	if mapperError != nil {
-		return nil, exception.ServerException{
-			Err: mapperError,
-		}
+		return nil, exceptions.WrapErrorWithTrackableException(mapperError)
 	}
 
 	newUser, updateUserError := service.GetDbConnection().GetQueries().UpdateUser(ctx, updateUserParams)
 	if updateUserError != nil {
-		return nil, exception.ServerException{
-			Err: updateUserError,
-		}
+		return nil, exceptions.WrapErrorWithTrackableException(updateUserError)
 	}
 
 	var claims jwt_claims.UserClaims
@@ -88,16 +88,12 @@ func (u UpdateUserHandler) Handle(
 		newUser,
 	)
 	if claimsMappingError != nil {
-		return nil, exception.ServerException{
-			Err: claimsMappingError,
-		}
+		return nil, exceptions.WrapErrorWithTrackableException(claimsMappingError)
 	}
 
 	accessToken, refreshToken, tokenGenerationError := service.GetJwtHandler().GenerateJwtPair(claims)
 	if tokenGenerationError != nil {
-		return nil, exception.ServerException{
-			Err: tokenGenerationError,
-		}
+		return nil, exceptions.WrapErrorWithTrackableException(tokenGenerationError)
 	}
 
 	var response update.UpdateUserResponseDto
@@ -113,9 +109,7 @@ func (u UpdateUserHandler) Handle(
 		},
 	)
 	if responseMappingError != nil {
-		return nil, exception.ServerException{
-			Err: responseMappingError,
-		}
+		return nil, exceptions.WrapErrorWithTrackableException(responseMappingError)
 	}
 
 	return &response, nil

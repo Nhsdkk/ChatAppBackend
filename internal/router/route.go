@@ -1,8 +1,9 @@
 package router
 
 import (
-	"chat_app_backend/application/models/exception"
 	"chat_app_backend/internal/binder"
+	"chat_app_backend/internal/exceptions"
+	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/handler"
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/service_wrapper"
@@ -48,12 +49,17 @@ func (r *BaseRoute[TRequest, TResponse]) getEndpointHandler(preferredResponseSta
 			requestDto := requestDtoInterface.(TRequest)
 
 			if validationError := r.validator.Validate(&requestDto); validationError != nil {
-				var restException exception.IRestException
+				var restException exceptions.IRestException
 
 				switch {
 				case errors.As(validationError, &restException):
 				default:
-					restException = exception.InvalidBodyException{Err: validationError}
+					restException = common_exceptions.InvalidBodyException{
+						BaseRestException: exceptions.BaseRestException{
+							ITrackableException: exceptions.WrapErrorWithTrackableException(validationError),
+							Message:             validationError.Error(),
+						},
+					}
 				}
 
 				_ = ctx.Error(restException)
