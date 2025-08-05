@@ -3,6 +3,7 @@ package middleware
 import (
 	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/exceptions/common_exceptions"
+	"chat_app_backend/internal/middleware/configs/rate_limiter"
 	redisinternal "chat_app_backend/internal/redis"
 	"errors"
 	"fmt"
@@ -11,10 +12,7 @@ import (
 	"time"
 )
 
-const RefillPerMinute = 2
-const MaxRequests = 3
-
-func RateLimiterMiddleware(redisClient *redisinternal.Client) gin.HandlerFunc {
+func RateLimiterMiddleware(config *rate_limiter.RateLimiterConfig, redisClient *redisinternal.Client) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ip := ctx.ClientIP()
 
@@ -42,16 +40,16 @@ func RateLimiterMiddleware(redisClient *redisinternal.Client) gin.HandlerFunc {
 
 		diff := int64(time.Since(lastRefill).Minutes())
 
-		if newEntry || diff > (MaxRequests-storedCount)/RefillPerMinute {
-			storedCount = MaxRequests
+		if newEntry || diff > (config.MaxRequests-storedCount)/config.RefillPerMinute {
+			storedCount = config.MaxRequests
 		} else {
-			storedCount += diff * RefillPerMinute
+			storedCount += diff * config.RefillPerMinute
 		}
 
-		storedCount--
+		storedCount = max(storedCount-1, -1)
 
 		pipe := redisClient.TxPipeline()
-		pipe.Set(ctx, fmt.Sprintf("%s:current_rate", ip), max(storedCount, 0), 0)
+		pipe.Set(ctx, fmt.Sprintf("%s:current_rate", ip), storedCount, 0)
 
 		if newEntry || diff != 0 {
 			var timeToSet time.Time
@@ -69,7 +67,7 @@ func RateLimiterMiddleware(redisClient *redisinternal.Client) gin.HandlerFunc {
 			return
 		}
 
-		if max(storedCount, -1) == -1 {
+		if storedCount < 0 {
 			_ = ctx.Error(
 				common_exceptions.TooManyRequestsException{
 					BaseRestException: exceptions.BaseRestException{

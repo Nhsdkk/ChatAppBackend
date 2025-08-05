@@ -9,6 +9,7 @@ import (
 	"chat_app_backend/internal/jwt"
 	logger2 "chat_app_backend/internal/logger"
 	"chat_app_backend/internal/middleware"
+	"chat_app_backend/internal/middleware/configs/rate_limiter"
 	"chat_app_backend/internal/redis"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db"
@@ -62,10 +63,19 @@ func (appl *Application) configureRoutes() {
 }
 
 func (appl *Application) configureMiddleware() {
+	rateLimiterConfig, err := appl.configuration.Get(&rate_limiter.RateLimiterConfig{})
+	if err != nil {
+		appl.serviceWrapper.GetLogger().
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(err)).
+			WithFatal().
+			Log()
+
+		return
+	}
 	appl.engine.Use(
 		middleware.RequestLoggingMiddleware(appl.serviceWrapper.GetLogger()),
 		middleware.ErrorHandlerMiddleware(appl.serviceWrapper.GetLogger()),
-		middleware.RateLimiterMiddleware(appl.serviceWrapper.GetRedisClient()),
+		middleware.RateLimiterMiddleware(rateLimiterConfig.(*rate_limiter.RateLimiterConfig), appl.serviceWrapper.GetRedisClient()),
 		middleware.AuthorizationMiddleware(
 			appl.serviceWrapper.GetJwtHandler(),
 			appl.serviceWrapper.GetDbConnection(),
@@ -77,6 +87,7 @@ func (appl *Application) loadConfigurations() {
 	dbConfiguration := &db.PostgresConfig{}
 	jwtConfig := &jwt.JwtConfig{}
 	redisConfig := &redis.RedisConfig{}
+	rateLimiterConfig := &rate_limiter.RateLimiterConfig{}
 	envLoader := env_loader.CreateLoaderFromEnv()
 
 	dbConfigurationLoadingErr := envLoader.LoadDataIntoStruct(dbConfiguration)
@@ -94,10 +105,20 @@ func (appl *Application) loadConfigurations() {
 		log.Fatal(redisConfigurationLoadingError)
 	}
 
+	rateLimiterConfigurationLoadingError := envLoader.LoadDataIntoStruct(rateLimiterConfig)
+	if rateLimiterConfigurationLoadingError != nil {
+		log.Fatal(rateLimiterConfigurationLoadingError)
+	}
+
+	if rateLimiterConfig.RefillPerMinute == 0 || rateLimiterConfig.MaxRequests == 0 {
+		log.Fatalf("refill per minute and max requests can't be zero")
+	}
+
 	appl.configuration = configuration.CreateConfiguration().
 		AddConfiguration(jwtConfig).
 		AddConfiguration(dbConfiguration).
-		AddConfiguration(redisConfig)
+		AddConfiguration(redisConfig).
+		AddConfiguration(rateLimiterConfig)
 }
 
 func (appl *Application) configureServices() {
