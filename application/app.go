@@ -1,6 +1,7 @@
 package application
 
 import (
+	"chat_app_backend/application/application_config"
 	controllers "chat_app_backend/application/controllers/users"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/internal/configuration"
@@ -29,12 +30,8 @@ type IApplication interface {
 	Close()
 }
 
-type Config struct {
-	Url string
-}
-
 type Application struct {
-	config         *Config
+	config         *application_config.ApplicationConfig
 	engine         *gin.Engine
 	server         *http.Server
 	serviceWrapper service_wrapper.IServiceWrapper
@@ -54,8 +51,26 @@ func (appl *Application) Close() {
 func (appl *Application) Configure() {
 	appl.loadConfigurations()
 	appl.configureServices()
+	appl.createServer()
 	appl.configureMiddleware()
 	appl.configureRoutes()
+}
+
+func (appl *Application) createServer() {
+	applConfig, err := appl.configuration.Get(&application_config.ApplicationConfig{})
+	if err != nil {
+		appl.serviceWrapper.GetLogger().
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(err)).
+			WithFatal().
+			Log()
+		return
+	}
+
+	appl.config = applConfig.(*application_config.ApplicationConfig)
+	appl.server = &http.Server{
+		Addr:    appl.config.Url,
+		Handler: appl.engine,
+	}
 }
 
 func (appl *Application) configureRoutes() {
@@ -72,10 +87,11 @@ func (appl *Application) configureMiddleware() {
 
 		return
 	}
+
 	appl.engine.Use(
 		middleware.RequestLoggingMiddleware(appl.serviceWrapper.GetLogger()),
 		middleware.ErrorHandlerMiddleware(appl.serviceWrapper.GetLogger()),
-		middleware.RateLimiterMiddleware(rateLimiterConfig.(*rate_limiter.RateLimiterConfig), appl.serviceWrapper),
+		middleware.RateLimiterMiddleware(rateLimiterConfig.(*rate_limiter.RateLimiterConfig), appl.serviceWrapper, appl.config),
 		middleware.AuthorizationMiddleware(
 			appl.serviceWrapper.GetJwtHandler(),
 			appl.serviceWrapper.GetDbConnection(),
@@ -88,6 +104,7 @@ func (appl *Application) loadConfigurations() {
 	jwtConfig := &jwt.JwtConfig{}
 	redisConfig := &redis.RedisConfig{}
 	rateLimiterConfig := &rate_limiter.RateLimiterConfig{}
+	applicationConfig := &application_config.ApplicationConfig{}
 	envLoader := env_loader.CreateLoaderFromEnv()
 
 	dbConfigurationLoadingErr := envLoader.LoadDataIntoStruct(dbConfiguration)
@@ -110,11 +127,17 @@ func (appl *Application) loadConfigurations() {
 		log.Fatal(rateLimiterConfigurationLoadingError)
 	}
 
+	applicationConfigLoadingError := envLoader.LoadDataIntoStruct(applicationConfig)
+	if applicationConfigLoadingError != nil {
+		log.Fatal(applicationConfigLoadingError)
+	}
+
 	appl.configuration = configuration.CreateConfiguration().
 		AddConfiguration(jwtConfig).
 		AddConfiguration(dbConfiguration).
 		AddConfiguration(redisConfig).
-		AddConfiguration(rateLimiterConfig)
+		AddConfiguration(rateLimiterConfig).
+		AddConfiguration(applicationConfig)
 }
 
 func (appl *Application) configureServices() {
@@ -182,15 +205,10 @@ func (appl *Application) Serve() {
 	appl.Close()
 }
 
-func Create(config *Config) *Application {
+func Create() *Application {
 	engine := gin.New()
 	return &Application{
-		engine: engine,
-		config: config,
-		server: &http.Server{
-			Addr:    config.Url,
-			Handler: engine,
-		},
+		engine:         engine,
 		serviceWrapper: nil,
 		configuration:  nil,
 	}

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"chat_app_backend/application/application_config"
 	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/middleware/configs/rate_limiter"
@@ -12,7 +13,7 @@ import (
 	"time"
 )
 
-func RateLimiterMiddleware(config *rate_limiter.RateLimiterConfig, services service_wrapper.IServiceWrapper) gin.HandlerFunc {
+func RateLimiterMiddleware(config *rate_limiter.RateLimiterConfig, services service_wrapper.IServiceWrapper, applicationConfiguration *application_config.ApplicationConfig) gin.HandlerFunc {
 	if config.RefillPerMinute == 0 || config.MaxRequests == 0 {
 		services.GetLogger().
 			CreateErrorMessage(exceptions.CreateTrackableExceptionFromStringF("refill per minute and max requests can't be zero")).
@@ -20,6 +21,12 @@ func RateLimiterMiddleware(config *rate_limiter.RateLimiterConfig, services serv
 			Log()
 
 		return nil
+	}
+
+	if applicationConfiguration.Environment == application_config.Development {
+		return func(ctx *gin.Context) {
+			ctx.Next()
+		}
 	}
 
 	return func(ctx *gin.Context) {
