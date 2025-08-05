@@ -4,7 +4,7 @@ import (
 	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/middleware/configs/rate_limiter"
-	redisinternal "chat_app_backend/internal/redis"
+	"chat_app_backend/internal/service_wrapper"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -12,12 +12,21 @@ import (
 	"time"
 )
 
-func RateLimiterMiddleware(config *rate_limiter.RateLimiterConfig, redisClient *redisinternal.Client) gin.HandlerFunc {
+func RateLimiterMiddleware(config *rate_limiter.RateLimiterConfig, services service_wrapper.IServiceWrapper) gin.HandlerFunc {
+	if config.RefillPerMinute == 0 || config.MaxRequests == 0 {
+		services.GetLogger().
+			CreateErrorMessage(exceptions.CreateTrackableExceptionFromStringF("refill per minute and max requests can't be zero")).
+			WithFatal().
+			Log()
+
+		return nil
+	}
+
 	return func(ctx *gin.Context) {
 		ip := ctx.ClientIP()
 
 		newEntry := false
-		lastRefill, err := redisClient.Get(ctx, fmt.Sprintf("%s:last_refill", ip)).Time()
+		lastRefill, err := services.GetRedisClient().Get(ctx, fmt.Sprintf("%s:last_refill", ip)).Time()
 		switch {
 		case errors.Is(err, redis.Nil):
 			lastRefill = time.Now()
@@ -28,7 +37,7 @@ func RateLimiterMiddleware(config *rate_limiter.RateLimiterConfig, redisClient *
 			return
 		}
 
-		storedCount, err := redisClient.Get(ctx, fmt.Sprintf("%s:current_rate", ip)).Int64()
+		storedCount, err := services.GetRedisClient().Get(ctx, fmt.Sprintf("%s:current_rate", ip)).Int64()
 		switch {
 		case errors.Is(err, redis.Nil):
 			storedCount = 0
@@ -38,25 +47,25 @@ func RateLimiterMiddleware(config *rate_limiter.RateLimiterConfig, redisClient *
 			return
 		}
 
-		diff := int64(time.Since(lastRefill).Minutes())
+		elapsedMinutes := int64(time.Since(lastRefill).Minutes())
 
-		if newEntry || diff > (config.MaxRequests-storedCount)/config.RefillPerMinute {
+		if newEntry || elapsedMinutes > (config.MaxRequests-storedCount)/config.RefillPerMinute {
 			storedCount = config.MaxRequests
 		} else {
-			storedCount += diff * config.RefillPerMinute
+			storedCount += elapsedMinutes * config.RefillPerMinute
 		}
 
 		storedCount = max(storedCount-1, -1)
 
-		pipe := redisClient.TxPipeline()
+		pipe := services.GetRedisClient().TxPipeline()
 		pipe.Set(ctx, fmt.Sprintf("%s:current_rate", ip), storedCount, 0)
 
-		if newEntry || diff != 0 {
+		if newEntry || elapsedMinutes != 0 {
 			var timeToSet time.Time
 			if newEntry {
 				timeToSet = time.Now()
 			} else {
-				timeToSet = lastRefill.Add(time.Minute * time.Duration(diff))
+				timeToSet = lastRefill.Add(time.Minute * time.Duration(elapsedMinutes))
 			}
 			pipe.Set(ctx, fmt.Sprintf("%s:last_refill", ip), timeToSet, 0)
 		}

@@ -75,7 +75,7 @@ func (appl *Application) configureMiddleware() {
 	appl.engine.Use(
 		middleware.RequestLoggingMiddleware(appl.serviceWrapper.GetLogger()),
 		middleware.ErrorHandlerMiddleware(appl.serviceWrapper.GetLogger()),
-		middleware.RateLimiterMiddleware(rateLimiterConfig.(*rate_limiter.RateLimiterConfig), appl.serviceWrapper.GetRedisClient()),
+		middleware.RateLimiterMiddleware(rateLimiterConfig.(*rate_limiter.RateLimiterConfig), appl.serviceWrapper),
 		middleware.AuthorizationMiddleware(
 			appl.serviceWrapper.GetJwtHandler(),
 			appl.serviceWrapper.GetDbConnection(),
@@ -108,10 +108,6 @@ func (appl *Application) loadConfigurations() {
 	rateLimiterConfigurationLoadingError := envLoader.LoadDataIntoStruct(rateLimiterConfig)
 	if rateLimiterConfigurationLoadingError != nil {
 		log.Fatal(rateLimiterConfigurationLoadingError)
-	}
-
-	if rateLimiterConfig.RefillPerMinute == 0 || rateLimiterConfig.MaxRequests == 0 {
-		log.Fatalf("refill per minute and max requests can't be zero")
 	}
 
 	appl.configuration = configuration.CreateConfiguration().
