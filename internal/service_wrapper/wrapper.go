@@ -4,6 +4,7 @@ import (
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/internal/jwt"
 	"chat_app_backend/internal/logger"
+	"chat_app_backend/internal/redis"
 	"chat_app_backend/internal/sqlc/db"
 	"github.com/gin-gonic/gin"
 )
@@ -15,13 +16,19 @@ type IServiceWrapper interface {
 	GetJwtHandler() jwt.IHandler[jwt_claims.UserClaims]
 	GetDbConnection() db.IDbConnection
 	GetLogger() logger.ILogger
+	GetRedisClient() *redis.Client
 	Close() error
 }
 
 type ServiceWrapper struct {
-	db         db.IDbConnection
-	jwtHandler jwt.IHandler[jwt_claims.UserClaims]
-	logger     logger.ILogger
+	db          db.IDbConnection
+	jwtHandler  jwt.IHandler[jwt_claims.UserClaims]
+	logger      logger.ILogger
+	redisClient *redis.Client
+}
+
+func (wrapper *ServiceWrapper) GetRedisClient() *redis.Client {
+	return wrapper.redisClient
 }
 
 func (wrapper *ServiceWrapper) GetLogger() logger.ILogger {
@@ -51,10 +58,12 @@ func CreateWrapper(
 	db db.IDbConnection,
 	jwtHandler jwt.IHandler[jwt_claims.UserClaims],
 	logger logger.ILogger,
+	redisClient *redis.Client,
 ) IServiceWrapper {
 	sw := &ServiceWrapper{}
 	sw.db = db
 	sw.jwtHandler = jwtHandler
 	sw.logger = logger
+	sw.redisClient = redisClient
 	return sw
 }

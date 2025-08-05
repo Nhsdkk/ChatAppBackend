@@ -5,9 +5,11 @@ import (
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/internal/configuration"
 	"chat_app_backend/internal/env_loader"
+	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/jwt"
 	logger2 "chat_app_backend/internal/logger"
 	"chat_app_backend/internal/middleware"
+	"chat_app_backend/internal/redis"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db"
 	"context"
@@ -63,6 +65,7 @@ func (appl *Application) configureMiddleware() {
 	appl.engine.Use(
 		middleware.RequestLoggingMiddleware(appl.serviceWrapper.GetLogger()),
 		middleware.ErrorHandlerMiddleware(appl.serviceWrapper.GetLogger()),
+		middleware.RateLimiterMiddleware(appl.serviceWrapper.GetRedisClient()),
 		middleware.AuthorizationMiddleware(
 			appl.serviceWrapper.GetJwtHandler(),
 			appl.serviceWrapper.GetDbConnection(),
@@ -73,6 +76,7 @@ func (appl *Application) configureMiddleware() {
 func (appl *Application) loadConfigurations() {
 	dbConfiguration := &db.PostgresConfig{}
 	jwtConfig := &jwt.JwtConfig{}
+	redisConfig := &redis.RedisConfig{}
 	envLoader := env_loader.CreateLoaderFromEnv()
 
 	dbConfigurationLoadingErr := envLoader.LoadDataIntoStruct(dbConfiguration)
@@ -85,32 +89,66 @@ func (appl *Application) loadConfigurations() {
 		log.Fatal(jwtConfigurationLoadingError)
 	}
 
+	redisConfigurationLoadingError := envLoader.LoadDataIntoStruct(redisConfig)
+	if redisConfigurationLoadingError != nil {
+		log.Fatal(redisConfigurationLoadingError)
+	}
+
 	appl.configuration = configuration.CreateConfiguration().
 		AddConfiguration(jwtConfig).
-		AddConfiguration(dbConfiguration)
+		AddConfiguration(dbConfiguration).
+		AddConfiguration(redisConfig)
 }
 
 func (appl *Application) configureServices() {
 	ctx := context.Background()
 
-	dbConnection, err := configuration.BuildFromConfiguration[db.Connection](
+	logger := logger2.CreateLogger(os.Stdout)
+
+	dbConnection, dbBuildError := configuration.BuildFromConfiguration[db.Connection](
 		appl.configuration,
 		db.CreateConnection,
 		&ctx,
 	)
 
-	if err != nil {
-		log.Fatalf("Can't connect to database: %s", err)
+	if dbBuildError != nil {
+		logger.
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(dbBuildError)).
+			WithFatal().
+			Log()
+
+		return
 	}
 
-	jwtHandler, _ := configuration.BuildFromConfiguration[jwt.Handler[jwt_claims.UserClaims]](
+	jwtHandler, jwtHandlerBuildError := configuration.BuildFromConfiguration[jwt.Handler[jwt_claims.UserClaims]](
 		appl.configuration,
 		jwt.CreateJwtHandler[jwt_claims.UserClaims],
 	)
 
-	logger := logger2.CreateLogger(os.Stdout)
+	if jwtHandlerBuildError != nil {
+		logger.
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(jwtHandlerBuildError)).
+			WithFatal().
+			Log()
 
-	appl.serviceWrapper = service_wrapper.CreateWrapper(dbConnection, jwtHandler, logger)
+		return
+	}
+
+	redisClient, redisClientBuildError := configuration.BuildFromConfiguration[redis.Client](
+		appl.configuration,
+		redis.CreateRedisClient,
+	)
+
+	if redisClientBuildError != nil {
+		logger.
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(redisClientBuildError)).
+			WithFatal().
+			Log()
+
+		return
+	}
+
+	appl.serviceWrapper = service_wrapper.CreateWrapper(dbConnection, jwtHandler, logger, redisClient)
 }
 
 func (appl *Application) Serve() {
