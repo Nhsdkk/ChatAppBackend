@@ -68,11 +68,13 @@ func CreateWrapper(
 	jwtHandler jwt.IHandler[jwt_claims.UserClaims],
 	logger logger.ILogger,
 	redisClient *redis.Client,
+	s3Client s3.IClient,
 ) IServiceWrapper {
 	sw := &ServiceWrapper{}
 	sw.db = db
 	sw.jwtHandler = jwtHandler
 	sw.logger = logger
 	sw.redisClient = redisClient
+	sw.s3Client = s3Client
 	return sw
 }

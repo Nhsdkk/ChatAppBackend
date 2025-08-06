@@ -12,16 +12,18 @@ import (
 	"chat_app_backend/internal/middleware"
 	"chat_app_backend/internal/middleware/configs/rate_limiter"
 	"chat_app_backend/internal/redis"
+	"chat_app_backend/internal/s3"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db"
 	"context"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/gin-gonic/gin"
 )
 
 type IApplication interface {
@@ -104,6 +106,7 @@ func (appl *Application) loadConfigurations() {
 	jwtConfig := &jwt.JwtConfig{}
 	redisConfig := &redis.RedisConfig{}
 	rateLimiterConfig := &rate_limiter.RateLimiterConfig{}
+	s3Config := &s3.S3Config{}
 	applicationConfig := &application_config.ApplicationConfig{}
 	envLoader := env_loader.CreateLoaderFromEnv()
 
@@ -132,12 +135,18 @@ func (appl *Application) loadConfigurations() {
 		log.Fatal(applicationConfigLoadingError)
 	}
 
+	s3ConfigLoadingError := envLoader.LoadDataIntoStruct(s3Config)
+	if s3ConfigLoadingError != nil {
+		log.Fatal(s3ConfigLoadingError)
+	}
+
 	appl.configuration = configuration.CreateConfiguration().
 		AddConfiguration(jwtConfig).
 		AddConfiguration(dbConfiguration).
 		AddConfiguration(redisConfig).
 		AddConfiguration(rateLimiterConfig).
-		AddConfiguration(applicationConfig)
+		AddConfiguration(applicationConfig).
+		AddConfiguration(s3Config)
 }
 
 func (appl *Application) configureServices() {
@@ -177,6 +186,7 @@ func (appl *Application) configureServices() {
 	redisClient, redisClientBuildError := configuration.BuildFromConfiguration[redis.Client](
 		appl.configuration,
 		redis.CreateRedisClient,
+		&ctx,
 	)
 
 	if redisClientBuildError != nil {
@@ -188,7 +198,27 @@ func (appl *Application) configureServices() {
 		return
 	}
 
-	appl.serviceWrapper = service_wrapper.CreateWrapper(dbConnection, jwtHandler, logger, redisClient)
+	s3Client, s3ClientCreationError := configuration.BuildFromConfiguration[s3.Client](
+		appl.configuration,
+		s3.CreateClient,
+	)
+
+	if s3ClientCreationError != nil {
+		logger.
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(s3ClientCreationError)).
+			WithFatal().
+			Log()
+
+		return
+	}
+
+	appl.serviceWrapper = service_wrapper.CreateWrapper(
+		dbConnection,
+		jwtHandler,
+		logger,
+		redisClient,
+		s3Client,
+	)
 }
 
 func (appl *Application) Serve() {
