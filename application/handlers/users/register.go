@@ -10,6 +10,7 @@ import (
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
+
 	"github.com/gin-gonic/gin"
 )
 

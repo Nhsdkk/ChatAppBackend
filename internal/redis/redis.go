@@ -11,7 +11,7 @@ type Client struct {
 	*redis.Client
 }
 
-func CreateRedisClient(config *RedisConfig, ctx context.Context) (*Client, error) {
+func CreateRedisClient(config *RedisConfig, ctx *context.Context) (*Client, error) {
 	client := redis.NewClient(
 		&redis.Options{
 			Addr:       fmt.Sprintf("%s:%d", config.Host, config.Port),
@@ -22,7 +22,7 @@ func CreateRedisClient(config *RedisConfig, ctx context.Context) (*Client, error
 		},
 	)
 
-	if err := client.Ping(ctx).Err(); err != nil {
+	if err := client.Ping(*ctx).Err(); err != nil {
 		return nil, err
 	}
 
