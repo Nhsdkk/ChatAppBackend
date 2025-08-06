@@ -36,9 +36,31 @@ services:
     networks:
       - shared
 
+  s3:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z-cpuv1
+    container_name: s3
+    hostname: s3
+    env_file:
+      - "./env/minio/.env"
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: [ "CMD", "mc", "ready", "local" ]
+      interval: 5s
+      timeout: 10s
+      retries: 120
+    networks:
+      - shared
+    command: server /data --console-address ":9001"
+
+
 volumes:
   pg_data:
   redis_data:
+  minio_data:
 
 networks:
   shared:
