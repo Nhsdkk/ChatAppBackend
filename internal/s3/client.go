@@ -14,7 +14,7 @@ type Statuses = string
 
 const (
 	ObjectNotFound Statuses = "NoSuchKey"
-	BucketNotFound          = "NoSuchKey"
+	BucketNotFound          = "NoSuchBucket"
 )
 
 type IClient interface {
