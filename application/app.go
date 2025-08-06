@@ -1,13 +1,17 @@
 package application
 
 import (
+	"chat_app_backend/application/application_config"
 	controllers "chat_app_backend/application/controllers/users"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/internal/configuration"
 	"chat_app_backend/internal/env_loader"
+	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/jwt"
 	logger2 "chat_app_backend/internal/logger"
 	"chat_app_backend/internal/middleware"
+	"chat_app_backend/internal/middleware/configs/rate_limiter"
+	"chat_app_backend/internal/redis"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db"
 	"context"
@@ -26,12 +30,8 @@ type IApplication interface {
 	Close()
 }
 
-type Config struct {
-	Url string
-}
-
 type Application struct {
-	config         *Config
+	config         *application_config.ApplicationConfig
 	engine         *gin.Engine
 	server         *http.Server
 	serviceWrapper service_wrapper.IServiceWrapper
@@ -51,8 +51,26 @@ func (appl *Application) Close() {
 func (appl *Application) Configure() {
 	appl.loadConfigurations()
 	appl.configureServices()
+	appl.createServer()
 	appl.configureMiddleware()
 	appl.configureRoutes()
+}
+
+func (appl *Application) createServer() {
+	applConfig, err := appl.configuration.Get(&application_config.ApplicationConfig{})
+	if err != nil {
+		appl.serviceWrapper.GetLogger().
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(err)).
+			WithFatal().
+			Log()
+		return
+	}
+
+	appl.config = applConfig.(*application_config.ApplicationConfig)
+	appl.server = &http.Server{
+		Addr:    appl.config.Url,
+		Handler: appl.engine,
+	}
 }
 
 func (appl *Application) configureRoutes() {
@@ -60,9 +78,20 @@ func (appl *Application) configureRoutes() {
 }
 
 func (appl *Application) configureMiddleware() {
+	rateLimiterConfig, err := appl.configuration.Get(&rate_limiter.RateLimiterConfig{})
+	if err != nil {
+		appl.serviceWrapper.GetLogger().
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(err)).
+			WithFatal().
+			Log()
+
+		return
+	}
+
 	appl.engine.Use(
 		middleware.RequestLoggingMiddleware(appl.serviceWrapper.GetLogger()),
 		middleware.ErrorHandlerMiddleware(appl.serviceWrapper.GetLogger()),
+		middleware.RateLimiterMiddleware(rateLimiterConfig.(*rate_limiter.RateLimiterConfig), appl.serviceWrapper, appl.config),
 		middleware.AuthorizationMiddleware(
 			appl.serviceWrapper.GetJwtHandler(),
 			appl.serviceWrapper.GetDbConnection(),
@@ -73,6 +102,9 @@ func (appl *Application) configureMiddleware() {
 func (appl *Application) loadConfigurations() {
 	dbConfiguration := &db.PostgresConfig{}
 	jwtConfig := &jwt.JwtConfig{}
+	redisConfig := &redis.RedisConfig{}
+	rateLimiterConfig := &rate_limiter.RateLimiterConfig{}
+	applicationConfig := &application_config.ApplicationConfig{}
 	envLoader := env_loader.CreateLoaderFromEnv()
 
 	dbConfigurationLoadingErr := envLoader.LoadDataIntoStruct(dbConfiguration)
@@ -85,32 +117,78 @@ func (appl *Application) loadConfigurations() {
 		log.Fatal(jwtConfigurationLoadingError)
 	}
 
+	redisConfigurationLoadingError := envLoader.LoadDataIntoStruct(redisConfig)
+	if redisConfigurationLoadingError != nil {
+		log.Fatal(redisConfigurationLoadingError)
+	}
+
+	rateLimiterConfigurationLoadingError := envLoader.LoadDataIntoStruct(rateLimiterConfig)
+	if rateLimiterConfigurationLoadingError != nil {
+		log.Fatal(rateLimiterConfigurationLoadingError)
+	}
+
+	applicationConfigLoadingError := envLoader.LoadDataIntoStruct(applicationConfig)
+	if applicationConfigLoadingError != nil {
+		log.Fatal(applicationConfigLoadingError)
+	}
+
 	appl.configuration = configuration.CreateConfiguration().
 		AddConfiguration(jwtConfig).
-		AddConfiguration(dbConfiguration)
+		AddConfiguration(dbConfiguration).
+		AddConfiguration(redisConfig).
+		AddConfiguration(rateLimiterConfig).
+		AddConfiguration(applicationConfig)
 }
 
 func (appl *Application) configureServices() {
 	ctx := context.Background()
 
-	dbConnection, err := configuration.BuildFromConfiguration[db.Connection](
+	logger := logger2.CreateLogger(os.Stdout)
+
+	dbConnection, dbBuildError := configuration.BuildFromConfiguration[db.Connection](
 		appl.configuration,
 		db.CreateConnection,
 		&ctx,
 	)
 
-	if err != nil {
-		log.Fatalf("Can't connect to database: %s", err)
+	if dbBuildError != nil {
+		logger.
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(dbBuildError)).
+			WithFatal().
+			Log()
+
+		return
 	}
 
-	jwtHandler, _ := configuration.BuildFromConfiguration[jwt.Handler[jwt_claims.UserClaims]](
+	jwtHandler, jwtHandlerBuildError := configuration.BuildFromConfiguration[jwt.Handler[jwt_claims.UserClaims]](
 		appl.configuration,
 		jwt.CreateJwtHandler[jwt_claims.UserClaims],
 	)
 
-	logger := logger2.CreateLogger(os.Stdout)
+	if jwtHandlerBuildError != nil {
+		logger.
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(jwtHandlerBuildError)).
+			WithFatal().
+			Log()
 
-	appl.serviceWrapper = service_wrapper.CreateWrapper(dbConnection, jwtHandler, logger)
+		return
+	}
+
+	redisClient, redisClientBuildError := configuration.BuildFromConfiguration[redis.Client](
+		appl.configuration,
+		redis.CreateRedisClient,
+	)
+
+	if redisClientBuildError != nil {
+		logger.
+			CreateErrorMessage(exceptions.WrapErrorWithTrackableException(redisClientBuildError)).
+			WithFatal().
+			Log()
+
+		return
+	}
+
+	appl.serviceWrapper = service_wrapper.CreateWrapper(dbConnection, jwtHandler, logger, redisClient)
 }
 
 func (appl *Application) Serve() {
@@ -127,15 +205,10 @@ func (appl *Application) Serve() {
 	appl.Close()
 }
 
-func Create(config *Config) *Application {
+func Create() *Application {
 	engine := gin.New()
 	return &Application{
-		engine: engine,
-		config: config,
-		server: &http.Server{
-			Addr:    config.Url,
-			Handler: engine,
-		},
+		engine:         engine,
 		serviceWrapper: nil,
 		configuration:  nil,
 	}

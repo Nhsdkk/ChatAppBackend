@@ -1,0 +1,45 @@
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:17.5-alpine
+    hostname: postgres
+    env_file:
+      - "./env/postgres/.env"
+    volumes:
+      - pg_data:/data/postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shared
+
+  redis:
+    image: redis:8.0.3-alpine
+    container_name: redis
+    hostname: redis
+    healthcheck:
+      test: 'redis-cli -a $${REDIS_PASSWORD} ping | grep PONG'
+      interval: 1s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - "./env/redis/.env"
+    command: /bin/sh -c "redis-server --port 6379 --requirepass $${REDIS_PASSWORD} --protected-mode yes"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - shared
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  shared:
+    driver: bridge
