@@ -102,7 +102,7 @@ func (c *Client) UploadFile(ctx context.Context, fileHeader *multipart.FileHeade
 		return "", uploadError
 	}
 
-	return c.GetDownloadUrl(ctx, bucketName, filename)
+	return c.GetDownloadUrl(ctx, filename, bucketName)
 }
 
 func (c *Client) DeleteFile(ctx context.Context, filename, bucketName string) error {
@@ -153,7 +153,7 @@ func (c *Client) ModifyFileContents(ctx context.Context, fileHeader *multipart.F
 		return "", uploadError
 	}
 
-	return c.GetDownloadUrl(ctx, bucketName, filename)
+	return c.GetDownloadUrl(ctx, filename, bucketName)
 }
 
 func (c *Client) CreateBucket(ctx context.Context, bucketName string) error {
