@@ -163,7 +163,7 @@ func (c *Client) CreateBucket(ctx context.Context, bucketName string) error {
 	}
 
 	if exists {
-		return fmt.Errorf("bucket with name %s aleady exists", bucketName)
+		return fmt.Errorf("bucket with name %s already exists", bucketName)
 	}
 
 	return c.client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
