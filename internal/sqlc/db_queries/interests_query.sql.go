@@ -8,7 +8,7 @@ package db_queries
 import (
 	"context"
 
-	"github.com/google/uuid"
+	"chat_app_backend/internal/extensions"
 )
 
 const assignInterestsToUser = `-- name: AssignInterestsToUser :exec
@@ -19,8 +19,8 @@ VALUES
 `
 
 type AssignInterestsToUserParams struct {
-	UserID      uuid.UUID
-	InterestIds []uuid.UUID
+	UserID      extensions.UUID
+	InterestIds []extensions.UUID
 }
 
 func (q *Queries) AssignInterestsToUser(ctx context.Context, arg AssignInterestsToUserParams) error {
@@ -59,7 +59,7 @@ DELETE FROM interests
 WHERE interests.id = $1
 `
 
-func (q *Queries) DeleteInterest(ctx context.Context, id uuid.UUID) error {
+func (q *Queries) DeleteInterest(ctx context.Context, id extensions.UUID) error {
 	_, err := q.db.Exec(ctx, deleteInterest, id)
 	return err
 }
@@ -69,7 +69,7 @@ SELECT id, title, icon_file_name, created_at, updated_at FROM interests
 WHERE interests.id = ANY($1::uuid[])
 `
 
-func (q *Queries) GetManyInterestsById(ctx context.Context, ids []uuid.UUID) ([]Interest, error) {
+func (q *Queries) GetManyInterestsById(ctx context.Context, ids []extensions.UUID) ([]Interest, error) {
 	rows, err := q.db.Query(ctx, getManyInterestsById, ids)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ JOIN user_interests on interests.id = user_interests.interest_id
 WHERE user_interests.user_id = $1
 `
 
-func (q *Queries) GetUserInterests(ctx context.Context, id uuid.UUID) ([]Interest, error) {
+func (q *Queries) GetUserInterests(ctx context.Context, id extensions.UUID) ([]Interest, error) {
 	rows, err := q.db.Query(ctx, getUserInterests, id)
 	if err != nil {
 		return nil, err
@@ -141,8 +141,8 @@ WHERE
 `
 
 type RemoveUserInterestParams struct {
-	UserID      uuid.UUID
-	InterestIds []uuid.UUID
+	UserID      extensions.UUID
+	InterestIds []extensions.UUID
 }
 
 func (q *Queries) RemoveUserInterest(ctx context.Context, arg RemoveUserInterestParams) error {
@@ -161,7 +161,7 @@ RETURNING id, title, icon_file_name, created_at, updated_at
 
 type UpdateInterestIconParams struct {
 	IconFileName string
-	ID           uuid.UUID
+	ID           extensions.UUID
 }
 
 func (q *Queries) UpdateInterestIcon(ctx context.Context, arg UpdateInterestIconParams) (Interest, error) {

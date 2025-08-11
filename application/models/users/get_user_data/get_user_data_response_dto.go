@@ -2,13 +2,13 @@ package get_user_data
 
 import (
 	interests "chat_app_backend/application/models/interests/get_many_by_ids"
+	"chat_app_backend/internal/extensions"
 	"chat_app_backend/internal/sqlc/db_queries"
-	"github.com/google/uuid"
 	"time"
 )
 
 type GetUserDataResponseDto struct {
-	ID             uuid.UUID                   `json:"id"`
+	ID             extensions.UUID             `json:"id"`
 	FullName       string                      `json:"full_name"`
 	Birthday       time.Time                   `json:"birthday"`
 	Gender         db_queries.Gender           `json:"gender"`

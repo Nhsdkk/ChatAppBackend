@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
+	"chat_app_backend/internal/extensions"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -91,7 +91,7 @@ FROM users
 WHERE users.id = $1
 `
 
-func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (User, error) {
+func (q *Queries) GetUserById(ctx context.Context, id extensions.UUID) (User, error) {
 	row := q.db.QueryRow(ctx, getUserById, id)
 	var i User
 	err := row.Scan(
@@ -117,7 +117,7 @@ DELETE FROM users
 WHERE users.id = $1
 `
 
-func (q *Queries) RemoveUser(ctx context.Context, id uuid.UUID) error {
+func (q *Queries) RemoveUser(ctx context.Context, id extensions.UUID) error {
 	_, err := q.db.Exec(ctx, removeUser, id)
 	return err
 }
@@ -151,7 +151,7 @@ type UpdateUserParams struct {
 	Password       *[]byte
 	AvatarFileName *string
 	Role           NullRoleType
-	ID             uuid.UUID
+	ID             extensions.UUID
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {

@@ -25,11 +25,13 @@ sql:
               type: "*time.Time"
           - db_type: "uuid"
             go_type:
-              type: "uuid.UUID"
+              type: "UUID"
+              import: "chat_app_backend/internal/extensions"
           - db_type: "uuid"
             nullable: true
             go_type:
-              type: "*uuid.UUID"
+              type: "UUID"
+              import: "chat_app_backend/internal/extensions"
           - db_type: "bytea"
             go_type:
               type: "[]byte"

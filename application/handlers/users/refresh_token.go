@@ -9,6 +9,7 @@ import (
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/service_wrapper"
 	"errors"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 )

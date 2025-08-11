@@ -1,7 +1,6 @@
 package users
 
 import (
-	interests2 "chat_app_backend/application/models/interests/get_many_by_ids"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/application/models/users/login"
 	"chat_app_backend/internal/exceptions"
@@ -10,7 +9,9 @@ import (
 	"chat_app_backend/internal/password"
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/service_wrapper"
+	"chat_app_backend/internal/sqlc/db_queries"
 	"errors"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 )
@@ -52,18 +53,6 @@ func (l LoginHandler) Handle(
 		return nil, exceptions.WrapErrorWithTrackableException(interestsQueryError)
 	}
 
-	interests := make([]interests2.GetInterestsDto, len(interestsRaw))
-	for idx, interestRaw := range interestsRaw {
-		mapperError := mapper.Mapper{}.Map(
-			&interests[idx],
-			interestRaw,
-		)
-
-		if mapperError != nil {
-			return nil, exceptions.WrapErrorWithTrackableException(mapperError)
-		}
-	}
-
 	var userClaims jwt_claims.UserClaims
 
 	mappingErr := mapper.Mapper{}.Map(&userClaims, user)
@@ -82,11 +71,11 @@ func (l LoginHandler) Handle(
 		&response,
 		user,
 		struct {
-			Interests    []interests2.GetInterestsDto
+			Interests    []db_queries.Interest
 			AccessToken  string
 			RefreshToken string
 		}{
-			Interests:    interests,
+			Interests:    interestsRaw,
 			AccessToken:  accessToken.GetToken(),
 			RefreshToken: refreshToken.GetToken(),
 		},

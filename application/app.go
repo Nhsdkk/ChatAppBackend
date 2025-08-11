@@ -55,6 +55,7 @@ func (appl *Application) Configure() {
 	appl.configureServices()
 	appl.createServer()
 	appl.configureMiddleware()
+
 	appl.configureRoutes()
 }
 

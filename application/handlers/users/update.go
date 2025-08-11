@@ -11,6 +11,7 @@ import (
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 )
 

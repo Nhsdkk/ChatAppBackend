@@ -76,17 +76,24 @@ func mapStruct(destVal reflect.Value, srcVals ...reflect.Value) error {
 			continue
 		}
 
-		if mapper.IsArrayType(destField.Type()) {
-			mapArray(*srcField, destField.Addr())
-			continue
+		var mappingError error
+
+		switch {
+		case destField.Type() == srcField.Type():
+			destField.Set(*srcField)
+		case srcField.CanConvert(destField.Type()):
+			destField.Set(srcField.Convert(destField.Type()))
+		case destField.Kind() == reflect.Array:
+			mappingError = mapArray(*srcField, destField.Addr())
+		case destField.Kind() == reflect.Slice:
+			mappingError = mapSlice(*srcField, destField.Addr())
+		case destField.Kind() == reflect.Struct:
+			mappingError = mapStruct(destField.Addr(), *srcField)
 		}
 
-		if mapper.IsSliceType(destField.Type()) {
-			mapSlice(*srcField, destField.Addr())
-			continue
+		if mappingError != nil {
+			return mappingError
 		}
-
-		destField.Set(*srcField)
 	}
 
 	return nil
@@ -109,10 +116,6 @@ func findValue(field reflect.StructField, srcVals ...reflect.Value) (*reflect.Va
 			continue
 		}
 
-		if !mapper.SameTypes(srcFieldV.Type(), field.Type) {
-			return nil, errors.New(fmt.Sprintf("kinds of values does not match (%s and %s)", srcFieldV.Kind(), field.Type.Kind()))
-		}
-
 		if !srcFieldV.CanInterface() {
 			return nil, errors.New(fmt.Sprintf("src field %s is unexported", field.Name))
 		}
@@ -123,16 +126,62 @@ func findValue(field reflect.StructField, srcVals ...reflect.Value) (*reflect.Va
 	return nil, errors.New(fmt.Sprintf("src does not have field %s, which dest has", field.Name))
 }
 
-func mapArray(srcVal reflect.Value, destVal reflect.Value) {
-	array := reflect.New(reflect.ArrayOf(srcVal.Len(), srcVal.Type().Elem()))
+func mapArray(srcVal reflect.Value, destVal reflect.Value) error {
+	array := reflect.New(reflect.ArrayOf(srcVal.Len(), destVal.Type().Elem()))
 	for idx := range srcVal.Len() {
-		array.Elem().Index(idx).Set(srcVal.Index(idx))
+		element := array.Elem().Index(idx)
+		src := srcVal.Index(idx)
+
+		var mappingError error
+
+		switch {
+		case src.Type() == element.Type():
+			element.Set(src)
+		case src.CanConvert(element.Type()):
+			element.Set(src.Convert(element.Type()))
+		case element.Kind() == reflect.Array:
+			mappingError = mapArray(src, element.Addr())
+		case element.Kind() == reflect.Slice:
+			mappingError = mapSlice(src, element.Addr())
+		case element.Kind() == reflect.Struct:
+			mappingError = mapStruct(element.Addr(), srcVal)
+		}
+
+		if mappingError != nil {
+			return mappingError
+		}
 	}
+
 	destVal.Elem().Set(array.Elem())
+	return nil
 }
 
-func mapSlice(srcVal reflect.Value, destVal reflect.Value) {
-	slice := reflect.MakeSlice(srcVal.Type(), srcVal.Len(), srcVal.Len())
-	reflect.Copy(slice, srcVal)
+func mapSlice(srcVal reflect.Value, destVal reflect.Value) error {
+	slice := reflect.MakeSlice(destVal.Type().Elem(), srcVal.Len(), srcVal.Len())
+	for idx := range srcVal.Len() {
+		element := slice.Index(idx)
+		src := srcVal.Index(idx)
+
+		var mappingError error
+
+		switch {
+		case src.Type() == element.Type():
+			element.Set(src)
+		case src.CanConvert(element.Type()):
+			element.Set(src.Convert(element.Type()))
+		case element.Kind() == reflect.Array:
+			mappingError = mapArray(src, element.Addr())
+		case element.Kind() == reflect.Slice:
+			mappingError = mapSlice(src, element.Addr())
+		case element.Kind() == reflect.Struct:
+			mappingError = mapStruct(element.Addr(), srcVal)
+		}
+
+		if mappingError != nil {
+			return mappingError
+		}
+	}
+
 	destVal.Elem().Set(slice)
+	return nil
 }

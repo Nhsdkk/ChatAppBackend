@@ -12,6 +12,7 @@ import (
 	"chat_app_backend/internal/router"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/validator"
+
 	"github.com/gin-gonic/gin"
 )
 

@@ -1,7 +1,6 @@
 package users
 
 import (
-	interests2 "chat_app_backend/application/models/interests/get_many_by_ids"
 	"chat_app_backend/application/models/users/get_user_data"
 	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/exceptions/common_exceptions"
@@ -11,6 +10,7 @@ import (
 	"chat_app_backend/internal/sqlc/db_queries"
 	"errors"
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 )
@@ -53,26 +53,14 @@ func (g GetUserDataHandler) Handle(
 		return nil, exceptions.WrapErrorWithTrackableException(interestsQueryError)
 	}
 
-	interests := make([]interests2.GetInterestsDto, len(interestsRaw))
-	for idx, interestRaw := range interestsRaw {
-		mapperError := mapper.Mapper{}.Map(
-			&interests[idx],
-			interestRaw,
-		)
-
-		if mapperError != nil {
-			return nil, exceptions.WrapErrorWithTrackableException(mapperError)
-		}
-	}
-
 	var response get_user_data.GetUserDataResponseDto
 	_ = mapper.Mapper{}.Map(
 		&response,
 		user,
 		struct {
-			Interests []interests2.GetInterestsDto
+			Interests []db_queries.Interest
 		}{
-			Interests: interests,
+			Interests: interestsRaw,
 		},
 	)
 	return &response, nil

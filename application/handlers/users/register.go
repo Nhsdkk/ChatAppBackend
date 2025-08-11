@@ -1,7 +1,6 @@
 package users
 
 import (
-	interests2 "chat_app_backend/application/models/interests/get_many_by_ids"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/application/models/users/register"
 	"chat_app_backend/internal/exceptions"
@@ -56,19 +55,6 @@ func (r RegisterHandler) Handle(
 				return exceptions.WrapErrorWithTrackableException(getInterestsError)
 			}
 
-			interestsMapped := make([]interests2.GetInterestsDto, len(interests))
-
-			for idx, interest := range interests {
-				err := mapper.Mapper{}.Map(
-					&interestsMapped[idx],
-					interest,
-				)
-
-				if err != nil {
-					return exceptions.WrapErrorWithTrackableException(err)
-				}
-			}
-
 			var claims jwt_claims.UserClaims
 			mappingErr := mapper.Mapper{}.Map(&claims, user)
 			if mappingErr != nil {
@@ -87,11 +73,11 @@ func (r RegisterHandler) Handle(
 				&response,
 				user,
 				struct {
-					Interests    []interests2.GetInterestsDto
+					Interests    []db_queries.Interest
 					AccessToken  string
 					RefreshToken string
 				}{
-					Interests:    interestsMapped,
+					Interests:    interests,
 					AccessToken:  accessToken.GetToken(),
 					RefreshToken: refreshToken.GetToken(),
 				},

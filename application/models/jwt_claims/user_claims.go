@@ -1,12 +1,12 @@
 package jwt_claims
 
 import (
+	"chat_app_backend/internal/extensions"
 	"chat_app_backend/internal/sqlc/db_queries"
-	"github.com/google/uuid"
 )
 
 type UserClaims struct {
-	ID            uuid.UUID           `json:"id"`
+	ID            extensions.UUID     `json:"id"`
 	FullName      string              `json:"full_name"`
 	Email         string              `json:"email"`
 	Role          db_queries.RoleType `json:"role"`
