@@ -168,7 +168,7 @@ type Message struct {
 	SenderID           extensions.UUID
 	RawText            *string
 	Edited             bool
-	MessageReferenceID extensions.UUID
+	MessageReferenceID *extensions.UUID
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }

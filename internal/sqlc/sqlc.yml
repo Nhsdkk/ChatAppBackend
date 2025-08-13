@@ -22,7 +22,8 @@ sql:
           - db_type: "timestamptz"
             nullable: true
             go_type:
-              type: "*time.Time"
+              type: "time.Time"
+              pointer: true
           - db_type: "uuid"
             go_type:
               type: "UUID"
@@ -32,6 +33,7 @@ sql:
             go_type:
               type: "UUID"
               import: "chat_app_backend/internal/extensions"
+              pointer: true
           - db_type: "bytea"
             go_type:
               type: "[]byte"

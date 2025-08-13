@@ -144,7 +144,7 @@ func mapArray(srcVal reflect.Value, destVal reflect.Value) error {
 		case element.Kind() == reflect.Slice:
 			mappingError = mapSlice(src, element.Addr())
 		case element.Kind() == reflect.Struct:
-			mappingError = mapStruct(element.Addr(), srcVal)
+			mappingError = mapStruct(element.Addr(), src)
 		}
 
 		if mappingError != nil {
@@ -174,7 +174,7 @@ func mapSlice(srcVal reflect.Value, destVal reflect.Value) error {
 		case element.Kind() == reflect.Slice:
 			mappingError = mapSlice(src, element.Addr())
 		case element.Kind() == reflect.Struct:
-			mappingError = mapStruct(element.Addr(), srcVal)
+			mappingError = mapStruct(element.Addr(), src)
 		}
 
 		if mappingError != nil {
