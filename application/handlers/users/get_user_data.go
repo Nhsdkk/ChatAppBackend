@@ -1,6 +1,8 @@
 package users
 
 import (
+	sharedinterests "chat_app_backend/application/handlers/shared/interests"
+	interests "chat_app_backend/application/models/interests/get"
 	"chat_app_backend/application/models/users/get_user_data"
 	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/exceptions/common_exceptions"
@@ -49,16 +51,21 @@ func (g GetUserDataHandler) Handle(
 		return nil, exceptions.WrapErrorWithTrackableException(userQueryError)
 	}
 
-	interestsRaw, interestsQueryError := services.GetDbConnection().GetQueries().GetUserInterests(ctx, request.ID)
+	rawInterests, interestsQueryError := services.GetDbConnection().GetQueries().GetUserInterests(ctx, request.ID)
 	if interestsQueryError != nil {
 		return nil, exceptions.WrapErrorWithTrackableException(interestsQueryError)
 	}
 
 	avatarDownloadLink, downloadLinkGenerationError := services.GetS3Client().
-		GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarBucket)
+		GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarsBucket)
 
 	if downloadLinkGenerationError != nil {
 		return nil, exceptions.WrapErrorWithTrackableException(downloadLinkGenerationError)
+	}
+
+	mappedInterests, err := sharedinterests.GetInterestIcons(rawInterests, services.GetS3Client(), ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	var response get_user_data.GetUserDataResponseDto
@@ -66,10 +73,10 @@ func (g GetUserDataHandler) Handle(
 		&response,
 		user,
 		struct {
-			Interests          []db_queries.Interest
+			Interests          []interests.GetInterestResponseDto
 			AvatarDownloadLink string
 		}{
-			Interests:          interestsRaw,
+			Interests:          mappedInterests,
 			AvatarDownloadLink: avatarDownloadLink,
 		},
 	)

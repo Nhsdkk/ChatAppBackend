@@ -2,7 +2,8 @@ package application
 
 import (
 	"chat_app_backend/application/application_config"
-	controllers "chat_app_backend/application/controllers/users"
+	"chat_app_backend/application/controllers/interests"
+	"chat_app_backend/application/controllers/users"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/internal/configuration"
 	"chat_app_backend/internal/env_loader"
@@ -77,7 +78,15 @@ func (appl *Application) createServer() {
 }
 
 func (appl *Application) configureRoutes() {
-	controllers.CreateUserController(appl.engine, appl.serviceWrapper).ConfigureGroup()
+	users.CreateUserController(
+		appl.engine,
+		appl.serviceWrapper,
+	).ConfigureGroup()
+
+	interests.CreateInterestsController(
+		appl.engine,
+		appl.serviceWrapper,
+	).ConfigureGroup()
 }
 
 func (appl *Application) configureMiddleware() {

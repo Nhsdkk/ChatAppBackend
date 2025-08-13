@@ -64,13 +64,22 @@ func (q *Queries) DeleteInterest(ctx context.Context, id extensions.UUID) error 
 	return err
 }
 
-const getManyInterestsById = `-- name: GetManyInterestsById :many
-SELECT id, title, icon_file_name, created_at, updated_at FROM interests
-WHERE interests.id = ANY($1::uuid[])
+const getManyInterestsByFilters = `-- name: GetManyInterestsByFilters :many
+SELECT id, title, icon_file_name, created_at, updated_at
+FROM interests
+WHERE
+    ($1::uuid[] IS NULL OR interests.id = ANY($1::uuid[]))
+  AND
+    ($2::text IS NULL OR interests.title ILIKE $2::text || '%')
 `
 
-func (q *Queries) GetManyInterestsById(ctx context.Context, ids []extensions.UUID) ([]Interest, error) {
-	rows, err := q.db.Query(ctx, getManyInterestsById, ids)
+type GetManyInterestsByFiltersParams struct {
+	Ids  []extensions.UUID
+	Name *string
+}
+
+func (q *Queries) GetManyInterestsByFilters(ctx context.Context, arg GetManyInterestsByFiltersParams) ([]Interest, error) {
+	rows, err := q.db.Query(ctx, getManyInterestsByFilters, arg.Ids, arg.Name)
 	if err != nil {
 		return nil, err
 	}

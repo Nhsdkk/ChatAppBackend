@@ -1,6 +1,8 @@
 package users
 
 import (
+	sharedinterests "chat_app_backend/application/handlers/shared/interests"
+	interests "chat_app_backend/application/models/interests/get"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/application/models/users/login"
 	"chat_app_backend/internal/exceptions"
@@ -10,7 +12,6 @@ import (
 	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/s3"
 	"chat_app_backend/internal/service_wrapper"
-	"chat_app_backend/internal/sqlc/db_queries"
 	"errors"
 
 	"github.com/gin-gonic/gin"
@@ -49,7 +50,7 @@ func (l LoginHandler) Handle(
 		}
 	}
 
-	interestsRaw, interestsQueryError := services.GetDbConnection().GetQueries().GetUserInterests(ctx, user.ID)
+	rawInterests, interestsQueryError := services.GetDbConnection().GetQueries().GetUserInterests(ctx, user.ID)
 	if interestsQueryError != nil {
 		return nil, exceptions.WrapErrorWithTrackableException(interestsQueryError)
 	}
@@ -67,10 +68,15 @@ func (l LoginHandler) Handle(
 	}
 
 	avatarDownloadLink, downloadLinkGenerationError := services.GetS3Client().
-		GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarBucket)
+		GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarsBucket)
 
 	if downloadLinkGenerationError != nil {
 		return nil, exceptions.WrapErrorWithTrackableException(downloadLinkGenerationError)
+	}
+
+	mappedInterests, err := sharedinterests.GetInterestIcons(rawInterests, services.GetS3Client(), ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	var response login.LoginResponseDto
@@ -79,13 +85,13 @@ func (l LoginHandler) Handle(
 		&response,
 		user,
 		struct {
-			Interests          []db_queries.Interest
+			Interests          []interests.GetInterestResponseDto
 			AccessToken        string
 			RefreshToken       string
 			AvatarDownloadLink string
 		}{
 			AvatarDownloadLink: avatarDownloadLink,
-			Interests:          interestsRaw,
+			Interests:          mappedInterests,
 			AccessToken:        accessToken.GetToken(),
 			RefreshToken:       refreshToken.GetToken(),
 		},

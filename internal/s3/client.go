@@ -21,7 +21,8 @@ const (
 type Buckets = string
 
 const (
-	AvatarBucket Buckets = "avatar"
+	AvatarsBucket       Buckets = "avatars"
+	InterestsIconBucket         = "interests"
 )
 
 type FileType = string
