@@ -35,7 +35,7 @@ type IClient interface {
 	GetDownloadUrl(ctx context.Context, filename string, bucketName Buckets) (string, error)
 	UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, filename string, bucketName Buckets) (string, error)
 	DeleteFile(ctx context.Context, filename string, bucketName Buckets) error
-	ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename, bucketName string) (string, error)
+	ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename string, bucketName Buckets) (string, error)
 	CreateBucket(ctx context.Context, bucketName Buckets) error
 	BucketExists(ctx context.Context, bucketName Buckets) (bool, error)
 	FileExists(ctx context.Context, filename string, bucketName Buckets) (bool, error)
