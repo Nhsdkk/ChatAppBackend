@@ -5,5 +5,5 @@ import (
 )
 
 type DeleteUserRequestDto struct {
-	ID extensions.UUID `form:"id" validator:"not_empty"`
+	ID extensions.UUID `uri:"id" validator:"not_empty"`
 }
