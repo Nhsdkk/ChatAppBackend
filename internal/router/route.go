@@ -131,8 +131,7 @@ func RegisterRoute(router *gin.RouterGroup, route IRoute) {
 	}
 }
 
-func RouteFactory[TRequest interface{}, TResponse interface{}](
-	routeType RouteType,
+func CreateBaseRoute[TRequest interface{}, TResponse interface{}](
 	wrapper service_wrapper.IServiceWrapper,
 	path string,
 	handlerFunc handler.HFunc[TRequest, TResponse, request_env.RequestEnv],
@@ -147,12 +146,5 @@ func RouteFactory[TRequest interface{}, TResponse interface{}](
 		method:    method,
 	}
 
-	switch routeType {
-	case Base:
-		return &baseRoute
-	case Authorized:
-		return &AuthorizedRoute[TRequest, TResponse]{route: baseRoute}
-	}
-
-	return nil
+	return &baseRoute
 }

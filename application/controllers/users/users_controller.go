@@ -29,8 +29,7 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 		engine,
 		"/users",
 		[]router.IRoute{
-			router.RouteFactory(
-				router.Base,
+			router.CreateBaseRoute(
 				serviceWrapper,
 				"/register",
 				users.RegisterHandler{}.Handle,
@@ -41,8 +40,7 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 					AttachValidator(func(data *register.RegisterRequestDto) error { return validators.ValidatePassword(data.Password) }),
 				router.POST,
 			),
-			router.RouteFactory(
-				router.Base,
+			router.CreateBaseRoute(
 				serviceWrapper,
 				"/login",
 				users.LoginHandler{}.Handle,
@@ -50,17 +48,17 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 					Validator[login.LoginRequestDto]{},
 				router.POST,
 			),
-			router.RouteFactory(
-				router.Authorized,
-				serviceWrapper,
-				"/:id",
-				users.GetUserDataHandler{}.Handle,
-				validator.
-					Validator[get_user_data.GetUserDataRequestDto]{},
-				router.GET,
-			),
-			router.RouteFactory(
-				router.Base,
+			&router.AuthorizedRoute[get_user_data.GetUserDataRequestDto, get_user_data.GetUserDataResponseDto]{
+				Route: router.CreateBaseRoute(
+					serviceWrapper,
+					"/:id",
+					users.GetUserDataHandler{}.Handle,
+					validator.
+						Validator[get_user_data.GetUserDataRequestDto]{},
+					router.GET,
+				),
+			},
+			router.CreateBaseRoute(
 				serviceWrapper,
 				"/refresh_token",
 				users.RefreshTokenHandler{}.Handle,
@@ -68,42 +66,44 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 					Validator[refresh_token.RefreshTokenRequestDto]{},
 				router.POST,
 			),
-			router.RouteFactory(
-				router.Authorized,
-				serviceWrapper,
-				"/:id",
-				users.DeleteUserHandler{}.Handle,
-				validator.
-					Validator[delete2.DeleteUserRequestDto]{},
-				router.DELETE,
-			),
-			router.RouteFactory(
-				router.Authorized,
-				serviceWrapper,
-				"/:id",
-				users.UpdateUserHandler{}.Handle,
-				validator.
-					Validator[update.UpdateUserRequestDto]{}.
-					AttachValidator(func(data *update.UpdateUserRequestDto) error {
-						if data.PasswordString == nil {
-							return nil
-						}
-						return validators.ValidatePassword(*data.PasswordString)
-					}).
-					AttachValidator(func(data *update.UpdateUserRequestDto) error {
-						if data.Email == nil {
-							return nil
-						}
-						return validators.ValidateEmail(*data.Email)
-					}).
-					AttachValidator(func(data *update.UpdateUserRequestDto) error {
-						if data.Birthday == nil {
-							return nil
-						}
-						return validators.ValidateBirthDate(*data.Birthday)
-					}),
-				router.PUT,
-			),
+			&router.AuthorizedRoute[delete2.DeleteUserRequestDto, delete2.DeleteUserResponseDto]{
+				Route: router.CreateBaseRoute(
+					serviceWrapper,
+					"/:id",
+					users.DeleteUserHandler{}.Handle,
+					validator.
+						Validator[delete2.DeleteUserRequestDto]{},
+					router.DELETE,
+				),
+			},
+			&router.AuthorizedRoute[update.UpdateUserRequestDto, update.UpdateUserResponseDto]{
+				Route: router.CreateBaseRoute(
+					serviceWrapper,
+					"/:id",
+					users.UpdateUserHandler{}.Handle,
+					validator.
+						Validator[update.UpdateUserRequestDto]{}.
+						AttachValidator(func(data *update.UpdateUserRequestDto) error {
+							if data.PasswordString == nil {
+								return nil
+							}
+							return validators.ValidatePassword(*data.PasswordString)
+						}).
+						AttachValidator(func(data *update.UpdateUserRequestDto) error {
+							if data.Email == nil {
+								return nil
+							}
+							return validators.ValidateEmail(*data.Email)
+						}).
+						AttachValidator(func(data *update.UpdateUserRequestDto) error {
+							if data.Birthday == nil {
+								return nil
+							}
+							return validators.ValidateBirthDate(*data.Birthday)
+						}),
+					router.PUT,
+				),
+			},
 		},
 	)
 

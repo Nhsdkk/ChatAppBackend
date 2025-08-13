@@ -11,6 +11,10 @@ type UUID struct {
 	UUID uuid.UUID
 }
 
+func (id UUID) String() string {
+	return id.UUID.String()
+}
+
 func (id *UUID) UnmarshalJSON(bytes []byte) error {
 	text := string(bytes)
 	text = strings.Replace(text, "\"", "", -1)
@@ -48,4 +52,10 @@ func (id *UUID) UnmarshalParam(param string) error {
 
 func (id *UUID) UnmarshalText(text []byte) error {
 	return id.UnmarshalParam(string(text))
+}
+
+func NewUUID() UUID {
+	return UUID{
+		UUID: uuid.New(),
+	}
 }
