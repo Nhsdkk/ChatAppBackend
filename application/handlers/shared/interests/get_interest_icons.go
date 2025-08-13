@@ -10,7 +10,7 @@ import (
 )
 
 func GetInterestIcons(rawInterests []db_queries.Interest, client s3.IClient, ctx context.Context) ([]interests.GetInterestResponseDto, exceptions.ITrackableException) {
-	mappedInterests := make([]interests.GetInterestResponseDto, len(rawInterests), len(rawInterests))
+	mappedInterests := make([]interests.GetInterestResponseDto, len(rawInterests))
 
 	for idx, rawInterest := range rawInterests {
 		link, s3Error := client.GetDownloadUrl(ctx, rawInterest.IconFileName, s3.InterestsIconBucket)
