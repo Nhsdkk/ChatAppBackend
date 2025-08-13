@@ -7,6 +7,7 @@ import (
 	"chat_app_backend/internal/jwt"
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/request_env"
+	"chat_app_backend/internal/s3"
 	"chat_app_backend/internal/service_wrapper"
 	"errors"
 
@@ -18,11 +19,11 @@ type RefreshTokenHandler struct{}
 
 func (r RefreshTokenHandler) Handle(
 	request *refresh_token.RefreshTokenRequestDto,
-	service service_wrapper.IServiceWrapper,
+	services service_wrapper.IServiceWrapper,
 	ctx *gin.Context,
 	_ *request_env.RequestEnv,
 ) (*refresh_token.RefreshTokenResponseDto, exceptions.ITrackableException) {
-	token := jwt.CreateTokenFromHandlerAndString(service.GetJwtHandler(), request.RefreshToken, jwt.RefreshToken)
+	token := jwt.CreateTokenFromHandlerAndString(services.GetJwtHandler(), request.RefreshToken, jwt.RefreshToken)
 
 	validToken, validationErr := token.Validate()
 	if validationErr != nil {
@@ -34,7 +35,7 @@ func (r RefreshTokenHandler) Handle(
 		}
 	}
 
-	user, err := service.
+	user, err := services.
 		GetDbConnection().
 		GetQueries().
 		GetUserById(ctx, validToken.GetClaims().ID)
@@ -61,9 +62,16 @@ func (r RefreshTokenHandler) Handle(
 		}
 	}
 
-	accessToken, accessTokenGenerationError := validToken.RefreshRelatedAccessToken(service.GetJwtHandler())
+	accessToken, accessTokenGenerationError := validToken.RefreshRelatedAccessToken(services.GetJwtHandler())
 	if accessTokenGenerationError != nil {
 		return nil, exceptions.WrapErrorWithTrackableException(accessTokenGenerationError)
+	}
+
+	avatarDownloadLink, downloadLinkGenerationError := services.GetS3Client().
+		GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarBucket)
+
+	if downloadLinkGenerationError != nil {
+		return nil, exceptions.WrapErrorWithTrackableException(downloadLinkGenerationError)
 	}
 
 	var response refresh_token.RefreshTokenResponseDto
@@ -71,9 +79,11 @@ func (r RefreshTokenHandler) Handle(
 		&response,
 		user,
 		struct {
-			AccessToken string
+			AccessToken        string
+			AvatarDownloadLink string
 		}{
-			AccessToken: accessToken.GetToken(),
+			AvatarDownloadLink: avatarDownloadLink,
+			AccessToken:        accessToken.GetToken(),
 		},
 	)
 	if mappingErr != nil {

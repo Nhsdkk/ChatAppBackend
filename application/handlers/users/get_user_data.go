@@ -6,6 +6,7 @@ import (
 	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/request_env"
+	"chat_app_backend/internal/s3"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
 	"errors"
@@ -53,14 +54,23 @@ func (g GetUserDataHandler) Handle(
 		return nil, exceptions.WrapErrorWithTrackableException(interestsQueryError)
 	}
 
+	avatarDownloadLink, downloadLinkGenerationError := services.GetS3Client().
+		GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarBucket)
+
+	if downloadLinkGenerationError != nil {
+		return nil, exceptions.WrapErrorWithTrackableException(downloadLinkGenerationError)
+	}
+
 	var response get_user_data.GetUserDataResponseDto
 	_ = mapper.Mapper{}.Map(
 		&response,
 		user,
 		struct {
-			Interests []db_queries.Interest
+			Interests          []db_queries.Interest
+			AvatarDownloadLink string
 		}{
-			Interests: interestsRaw,
+			Interests:          interestsRaw,
+			AvatarDownloadLink: avatarDownloadLink,
 		},
 	)
 	return &response, nil

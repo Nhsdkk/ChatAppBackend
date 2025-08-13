@@ -204,6 +204,6 @@ func CreateClient(cfg *S3Config) (*Client, error) {
 	}, nil
 }
 
-func ConstructFilenameFromFileType(fileType FileType) (string, error) {
-	return fmt.Sprintf("%s.%s", extensions.NewUUID(), fileType), nil
+func ConstructFilenameFromFileType(fileType FileType) string {
+	return fmt.Sprintf("%s.%s", extensions.NewUUID(), fileType)
 }

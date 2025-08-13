@@ -8,6 +8,7 @@ import (
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/password"
 	"chat_app_backend/internal/request_env"
+	"chat_app_backend/internal/s3"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
 	"errors"
@@ -20,11 +21,11 @@ type LoginHandler struct{}
 
 func (l LoginHandler) Handle(
 	request *login.LoginRequestDto,
-	service service_wrapper.IServiceWrapper,
+	services service_wrapper.IServiceWrapper,
 	ctx *gin.Context,
 	_ *request_env.RequestEnv,
 ) (*login.LoginResponseDto, exceptions.ITrackableException) {
-	user, userExistenceError := service.GetDbConnection().GetQueries().GetUserByEmail(ctx, request.Email)
+	user, userExistenceError := services.GetDbConnection().GetQueries().GetUserByEmail(ctx, request.Email)
 
 	switch {
 	case errors.Is(userExistenceError, pgx.ErrNoRows):
@@ -48,7 +49,7 @@ func (l LoginHandler) Handle(
 		}
 	}
 
-	interestsRaw, interestsQueryError := service.GetDbConnection().GetQueries().GetUserInterests(ctx, user.ID)
+	interestsRaw, interestsQueryError := services.GetDbConnection().GetQueries().GetUserInterests(ctx, user.ID)
 	if interestsQueryError != nil {
 		return nil, exceptions.WrapErrorWithTrackableException(interestsQueryError)
 	}
@@ -60,9 +61,16 @@ func (l LoginHandler) Handle(
 		return nil, exceptions.WrapErrorWithTrackableException(mappingErr)
 	}
 
-	accessToken, refreshToken, tokenGenerationError := service.GetJwtHandler().GenerateJwtPair(userClaims)
+	accessToken, refreshToken, tokenGenerationError := services.GetJwtHandler().GenerateJwtPair(userClaims)
 	if tokenGenerationError != nil {
 		return nil, exceptions.WrapErrorWithTrackableException(tokenGenerationError)
+	}
+
+	avatarDownloadLink, downloadLinkGenerationError := services.GetS3Client().
+		GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarBucket)
+
+	if downloadLinkGenerationError != nil {
+		return nil, exceptions.WrapErrorWithTrackableException(downloadLinkGenerationError)
 	}
 
 	var response login.LoginResponseDto
@@ -71,13 +79,15 @@ func (l LoginHandler) Handle(
 		&response,
 		user,
 		struct {
-			Interests    []db_queries.Interest
-			AccessToken  string
-			RefreshToken string
+			Interests          []db_queries.Interest
+			AccessToken        string
+			RefreshToken       string
+			AvatarDownloadLink string
 		}{
-			Interests:    interestsRaw,
-			AccessToken:  accessToken.GetToken(),
-			RefreshToken: refreshToken.GetToken(),
+			AvatarDownloadLink: avatarDownloadLink,
+			Interests:          interestsRaw,
+			AccessToken:        accessToken.GetToken(),
+			RefreshToken:       refreshToken.GetToken(),
 		},
 	)
 

@@ -4,7 +4,6 @@ import (
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/application/models/users/register"
 	"chat_app_backend/internal/exceptions"
-	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/password"
 	"chat_app_backend/internal/request_env"
@@ -28,15 +27,7 @@ func (r RegisterHandler) Handle(
 	transactionError := services.
 		GetDbConnection().
 		CreateTransaction(ctx, func(queries *db_queries.Queries) exceptions.ITrackableException {
-			avatarFileName, filenameGenerationError := s3.ConstructFilenameFromFileType(request.AvatarFileType)
-			if filenameGenerationError != nil {
-				return common_exceptions.InvalidBodyException{
-					BaseRestException: exceptions.BaseRestException{
-						ITrackableException: exceptions.WrapErrorWithTrackableException(filenameGenerationError),
-						Message:             "invalid content type header",
-					},
-				}
-			}
+			avatarFileName := s3.ConstructFilenameFromFileType(request.AvatarFileType)
 
 			avatarDownloadLink, fileUploadError := services.GetS3Client().
 				UploadFile(ctx, request.Avatar, avatarFileName, s3.AvatarBucket)

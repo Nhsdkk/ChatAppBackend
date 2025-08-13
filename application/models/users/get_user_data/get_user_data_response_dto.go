@@ -8,17 +8,17 @@ import (
 )
 
 type GetUserDataResponseDto struct {
-	ID             extensions.UUID             `json:"id"`
-	FullName       string                      `json:"full_name"`
-	Birthday       time.Time                   `json:"birthday"`
-	Gender         db_queries.Gender           `json:"gender"`
-	Email          string                      `json:"email"`
-	AvatarFileName string                      `json:"avatar_file_name"`
-	Online         bool                        `json:"online"`
-	EmailVerified  bool                        `json:"email_verified"`
-	LastSeen       time.Time                   `json:"last_seen"`
-	CreatedAt      time.Time                   `json:"created_at"`
-	UpdatedAt      time.Time                   `json:"updated_at"`
-	Role           db_queries.RoleType         `json:"role"`
-	Interests      []interests.GetInterestsDto `json:"interests"`
+	ID                 extensions.UUID             `json:"id"`
+	FullName           string                      `json:"full_name"`
+	Birthday           time.Time                   `json:"birthday"`
+	Gender             db_queries.Gender           `json:"gender"`
+	Email              string                      `json:"email"`
+	Online             bool                        `json:"online"`
+	EmailVerified      bool                        `json:"email_verified"`
+	LastSeen           time.Time                   `json:"last_seen"`
+	CreatedAt          time.Time                   `json:"created_at"`
+	UpdatedAt          time.Time                   `json:"updated_at"`
+	Role               db_queries.RoleType         `json:"role"`
+	Interests          []interests.GetInterestsDto `json:"interests"`
+	AvatarDownloadLink string                      `json:"avatar_download_link"`
 }

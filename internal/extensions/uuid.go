@@ -2,6 +2,7 @@ package extensions
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"strings"
 
 	"github.com/google/uuid"
@@ -9,6 +10,11 @@ import (
 
 type UUID struct {
 	UUID uuid.UUID
+}
+
+func (id UUID) MarshalJSON() ([]byte, error) {
+	stringUUID := id.UUID.String()
+	return json.Marshal(stringUUID)
 }
 
 func (id UUID) String() string {

@@ -13,7 +13,6 @@ type RegisterResponseDto struct {
 	Birthday           time.Time                   `json:"birthday"`
 	Gender             db_queries.Gender           `json:"gender"`
 	Email              string                      `json:"email"`
-	AvatarFileName     string                      `json:"avatar_file_name"`
 	Online             bool                        `json:"online"`
 	EmailVerified      bool                        `json:"email_verified"`
 	LastSeen           time.Time                   `json:"last_seen"`
