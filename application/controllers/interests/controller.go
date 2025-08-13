@@ -22,7 +22,7 @@ func CreateInterestsController(
 		r,
 		"/interests",
 		[]router.IRoute{
-			&router.AuthorizedRoute[interests2.GetInterestsRequestDto, interests2.GetInterestResponseDto]{
+			&router.AuthorizedRoute[interests2.GetInterestsRequestDto, interests2.GetInterestsResponseDto]{
 				Route: router.CreateBaseRoute(
 					wrapper,
 					"/",
