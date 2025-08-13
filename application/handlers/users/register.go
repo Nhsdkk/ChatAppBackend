@@ -1,6 +1,8 @@
 package users
 
 import (
+	sharedinterests "chat_app_backend/application/handlers/shared/interests"
+	interests "chat_app_backend/application/models/interests/get"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/application/models/users/register"
 	"chat_app_backend/internal/exceptions"
@@ -59,9 +61,14 @@ func (r RegisterHandler) Handle(
 				return exceptions.WrapErrorWithTrackableException(assignInterestError)
 			}
 
-			interests, getInterestsError := queries.GetUserInterests(ctx, user.ID)
+			rawInterests, getInterestsError := queries.GetUserInterests(ctx, user.ID)
 			if getInterestsError != nil {
 				return exceptions.WrapErrorWithTrackableException(getInterestsError)
+			}
+
+			mappedInterests, err := sharedinterests.GetInterestIcons(rawInterests, services.GetS3Client(), ctx)
+			if err != nil {
+				return err
 			}
 
 			var claims jwt_claims.UserClaims
@@ -83,12 +90,12 @@ func (r RegisterHandler) Handle(
 				user,
 				struct {
 					AvatarDownloadLink string
-					Interests          []db_queries.Interest
+					Interests          []interests.GetInterestResponseDto
 					AccessToken        string
 					RefreshToken       string
 				}{
 					AvatarDownloadLink: avatarDownloadLink,
-					Interests:          interests,
+					Interests:          mappedInterests,
 					AccessToken:        accessToken.GetToken(),
 					RefreshToken:       refreshToken.GetToken(),
 				},

@@ -1,11 +1,10 @@
 package interests
 
 import (
+	interests2 "chat_app_backend/application/handlers/shared/interests"
 	interests "chat_app_backend/application/models/interests/get"
 	"chat_app_backend/internal/exceptions"
-	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/request_env"
-	"chat_app_backend/internal/s3"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
 
@@ -31,27 +30,9 @@ func (g GetInterestsHandler) Handle(
 		return nil, exceptions.WrapErrorWithTrackableException(dbError)
 	}
 
-	mappedInterests := make([]interests.GetInterestResponseDto, len(rawInterests), len(rawInterests))
-
-	for idx, rawInterest := range rawInterests {
-		link, s3Error := service.GetS3Client().GetDownloadUrl(ctx, rawInterest.IconFileName, s3.InterestsIconBucket)
-		if s3Error != nil {
-			return nil, exceptions.WrapErrorWithTrackableException(s3Error)
-		}
-
-		mappingErr := mapper.Mapper{}.Map(
-			&mappedInterests[idx],
-			rawInterest,
-			struct {
-				IconDownloadLink string
-			}{
-				IconDownloadLink: link,
-			},
-		)
-
-		if mappingErr != nil {
-			return nil, exceptions.WrapErrorWithTrackableException(mappingErr)
-		}
+	mappedInterests, err := interests2.GetInterestIcons(rawInterests, service.GetS3Client(), ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return &interests.GetInterestsResponseDto{Interests: mappedInterests}, nil
