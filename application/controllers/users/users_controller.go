@@ -1,4 +1,4 @@
-package controllers
+package users
 
 import (
 	"chat_app_backend/application/controllers/users/validators"
@@ -17,15 +17,11 @@ import (
 )
 
 type UserController struct {
-	controller router.Controller
-}
-
-func (uc UserController) ConfigureGroup() {
-	uc.controller.ConfigureGroup()
+	router.Controller
 }
 
 func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.IServiceWrapper) (uc UserController) {
-	uc.controller = router.CreateController(
+	uc.Controller = router.CreateController(
 		engine,
 		"/users",
 		[]router.IRoute{

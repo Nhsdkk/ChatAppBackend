@@ -1,6 +1,11 @@
--- name: GetManyInterestsById :many
-SELECT * FROM interests
-WHERE interests.id = ANY(@ids::uuid[]);
+-- name: GetManyInterestsByFilters :many
+SELECT id, title, icon_file_name, created_at, updated_at
+FROM interests
+WHERE
+    (sqlc.narg('ids')::uuid[] IS NULL OR interests.id = ANY(sqlc.narg('ids')::uuid[]))
+  AND
+    (sqlc.narg('name')::text IS NULL OR interests.title ILIKE sqlc.narg('name')::text || '%');
+
 
 -- name: GetUserInterests :many
 SELECT 

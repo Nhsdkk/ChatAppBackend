@@ -67,7 +67,7 @@ func (l LoginHandler) Handle(
 	}
 
 	avatarDownloadLink, downloadLinkGenerationError := services.GetS3Client().
-		GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarBucket)
+		GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarsBucket)
 
 	if downloadLinkGenerationError != nil {
 		return nil, exceptions.WrapErrorWithTrackableException(downloadLinkGenerationError)

@@ -30,7 +30,7 @@ func (r RegisterHandler) Handle(
 			avatarFileName := s3.ConstructFilenameFromFileType(request.AvatarFileType)
 
 			avatarDownloadLink, fileUploadError := services.GetS3Client().
-				UploadFile(ctx, request.Avatar, avatarFileName, s3.AvatarBucket)
+				UploadFile(ctx, request.Avatar, avatarFileName, s3.AvatarsBucket)
 
 			if fileUploadError != nil {
 				return exceptions.WrapErrorWithTrackableException(fileUploadError)

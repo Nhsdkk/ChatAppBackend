@@ -201,6 +201,11 @@ func handleLength(value reflect.Value, fieldName string, arguments []reflect.Val
 	switch value.Kind() {
 	case reflect.Slice, reflect.Array, reflect.String:
 		break
+	case reflect.Pointer, reflect.UnsafePointer, reflect.Uintptr:
+		if value.IsNil() {
+			return nil
+		}
+		return handleLength(value.Elem(), fieldName, arguments)
 	default:
 		panic(fmt.Sprintf("can't apply length validator to field %s of type %s", fieldName, value.Kind()))
 	}

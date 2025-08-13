@@ -15,7 +15,7 @@ type Querier interface {
 	CreateInterest(ctx context.Context, arg CreateInterestParams) (Interest, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteInterest(ctx context.Context, id extensions.UUID) error
-	GetManyInterestsById(ctx context.Context, ids []extensions.UUID) ([]Interest, error)
+	GetManyInterestsByFilters(ctx context.Context, arg GetManyInterestsByFiltersParams) ([]Interest, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserById(ctx context.Context, id extensions.UUID) (User, error)
 	GetUserInterests(ctx context.Context, id extensions.UUID) ([]Interest, error)

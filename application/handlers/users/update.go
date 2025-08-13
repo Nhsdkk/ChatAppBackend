@@ -59,7 +59,7 @@ func (u UpdateUserHandler) Handle(
 	var downloadLink *string
 	if request.Avatar != nil {
 		link, err := service.GetS3Client().
-			ModifyFileContents(ctx, request.Avatar, user.AvatarFileName, s3.AvatarBucket)
+			ModifyFileContents(ctx, request.Avatar, user.AvatarFileName, s3.AvatarsBucket)
 
 		if err != nil {
 			return nil, exceptions.WrapErrorWithTrackableException(err)
@@ -70,7 +70,7 @@ func (u UpdateUserHandler) Handle(
 
 	if downloadLink == nil {
 		link, err := service.GetS3Client().
-			GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarBucket)
+			GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarsBucket)
 
 		if err != nil {
 			return nil, exceptions.WrapErrorWithTrackableException(err)
