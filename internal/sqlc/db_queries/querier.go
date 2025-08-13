@@ -7,19 +7,19 @@ package db_queries
 import (
 	"context"
 
-	"github.com/google/uuid"
+	"chat_app_backend/internal/extensions"
 )
 
 type Querier interface {
 	AssignInterestsToUser(ctx context.Context, arg AssignInterestsToUserParams) error
 	CreateInterest(ctx context.Context, arg CreateInterestParams) (Interest, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
-	DeleteInterest(ctx context.Context, id uuid.UUID) error
-	GetManyInterestsById(ctx context.Context, ids []uuid.UUID) ([]Interest, error)
+	DeleteInterest(ctx context.Context, id extensions.UUID) error
+	GetManyInterestsById(ctx context.Context, ids []extensions.UUID) ([]Interest, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
-	GetUserById(ctx context.Context, id uuid.UUID) (User, error)
-	GetUserInterests(ctx context.Context, id uuid.UUID) ([]Interest, error)
-	RemoveUser(ctx context.Context, id uuid.UUID) error
+	GetUserById(ctx context.Context, id extensions.UUID) (User, error)
+	GetUserInterests(ctx context.Context, id extensions.UUID) ([]Interest, error)
+	RemoveUser(ctx context.Context, id extensions.UUID) error
 	RemoveUserInterest(ctx context.Context, arg RemoveUserInterestParams) error
 	UpdateInterestIcon(ctx context.Context, arg UpdateInterestIconParams) (Interest, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)

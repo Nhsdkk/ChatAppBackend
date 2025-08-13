@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	"chat_app_backend/internal/extensions"
 )
 
 type ChatType string
@@ -139,15 +139,15 @@ func (ns NullRoleType) Value() (driver.Value, error) {
 }
 
 type Attachment struct {
-	ID        uuid.UUID
-	MessageID uuid.UUID
+	ID        extensions.UUID
+	MessageID extensions.UUID
 	Filename  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 type Chat struct {
-	ID        uuid.UUID
+	ID        extensions.UUID
 	Title     *string
 	CType     ChatType
 	CreatedAt time.Time
@@ -155,7 +155,7 @@ type Chat struct {
 }
 
 type Interest struct {
-	ID           uuid.UUID
+	ID           extensions.UUID
 	Title        string
 	IconFileName string
 	CreatedAt    time.Time
@@ -163,24 +163,24 @@ type Interest struct {
 }
 
 type Message struct {
-	ID                 uuid.UUID
-	ChatID             uuid.UUID
-	SenderID           uuid.UUID
+	ID                 extensions.UUID
+	ChatID             extensions.UUID
+	SenderID           extensions.UUID
 	RawText            *string
 	Edited             bool
-	MessageReferenceID *uuid.UUID
+	MessageReferenceID *extensions.UUID
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
 
 type ReadStatus struct {
-	UserID    uuid.UUID
-	MessageID uuid.UUID
+	UserID    extensions.UUID
+	MessageID extensions.UUID
 	ReadAt    time.Time
 }
 
 type User struct {
-	ID             uuid.UUID
+	ID             extensions.UUID
 	FullName       string
 	Birthday       time.Time
 	Gender         Gender
@@ -196,20 +196,20 @@ type User struct {
 }
 
 type UserChat struct {
-	UserID            uuid.UUID
-	ChatID            uuid.UUID
+	UserID            extensions.UUID
+	ChatID            extensions.UUID
 	RevealInformation bool
 	Blocked           bool
 }
 
 type UserInterest struct {
-	UserID     uuid.UUID
-	InterestID uuid.UUID
+	UserID     extensions.UUID
+	InterestID extensions.UUID
 }
 
 type VerificationCode struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
+	ID        extensions.UUID
+	UserID    extensions.UUID
 	Code      int32
 	ExpiresAt time.Time
 }

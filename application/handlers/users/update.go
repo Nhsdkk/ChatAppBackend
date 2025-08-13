@@ -8,9 +8,11 @@ import (
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/password"
 	"chat_app_backend/internal/request_env"
+	"chat_app_backend/internal/s3"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,6 +56,29 @@ func (u UpdateUserHandler) Handle(
 		nullRole.Valid = true
 	}
 
+	var downloadLink *string
+	if request.Avatar != nil {
+		link, err := service.GetS3Client().
+			ModifyFileContents(ctx, request.Avatar, user.AvatarFileName, s3.AvatarBucket)
+
+		if err != nil {
+			return nil, exceptions.WrapErrorWithTrackableException(err)
+		}
+
+		downloadLink = &link
+	}
+
+	if downloadLink == nil {
+		link, err := service.GetS3Client().
+			GetDownloadUrl(ctx, user.AvatarFileName, s3.AvatarBucket)
+
+		if err != nil {
+			return nil, exceptions.WrapErrorWithTrackableException(err)
+		}
+
+		downloadLink = &link
+	}
+
 	mapperError := mapper.Mapper{}.Map(
 		&updateUserParams,
 		*request,
@@ -64,8 +89,7 @@ func (u UpdateUserHandler) Handle(
 			Role           db_queries.NullRoleType
 			Online         *bool
 		}{
-			Password: newPasswordBytes,
-			//TODO(issue #5): add avatar upload
+			Password:       newPasswordBytes,
 			AvatarFileName: nil,
 			Gender:         nullGender,
 			Online:         nil,
@@ -101,11 +125,13 @@ func (u UpdateUserHandler) Handle(
 		&response,
 		newUser,
 		struct {
-			AccessToken  string
-			RefreshToken string
+			AccessToken        string
+			RefreshToken       string
+			AvatarDownloadLink string
 		}{
-			AccessToken:  accessToken.GetToken(),
-			RefreshToken: refreshToken.GetToken(),
+			AvatarDownloadLink: *downloadLink,
+			AccessToken:        accessToken.GetToken(),
+			RefreshToken:       refreshToken.GetToken(),
 		},
 	)
 	if responseMappingError != nil {

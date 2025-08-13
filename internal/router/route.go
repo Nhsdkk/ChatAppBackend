@@ -1,7 +1,6 @@
 package router
 
 import (
-	"chat_app_backend/internal/binder"
 	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/handler"
@@ -9,8 +8,9 @@ import (
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/validator"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type RouteType int
@@ -39,14 +39,43 @@ func (r *BaseRoute[TRequest, TResponse]) getPath() string {
 func (r *BaseRoute[TRequest, TResponse]) getEndpointHandler(preferredResponseStatus int, env *request_env.RequestEnv) func(ctx *gin.Context) {
 	return r.wrapper.WrapRoute(
 		func(serviceWrapper service_wrapper.IServiceWrapper, ctx *gin.Context) {
-			requestDtoInterface, bindingError := binder.Bind[TRequest](ctx)
+			var requestDto TRequest
 
-			if bindingError != nil {
-				_ = ctx.Error(errors.New("can't deserialize request"))
+			if err := ctx.ShouldBind(&requestDto); err != nil {
+				_ = ctx.Error(
+					common_exceptions.InvalidBodyException{
+						BaseRestException: exceptions.BaseRestException{
+							ITrackableException: exceptions.WrapErrorWithTrackableException(err),
+							Message:             "can't deserialize request",
+						},
+					},
+				)
 				return
 			}
 
-			requestDto := requestDtoInterface.(TRequest)
+			if err := ctx.ShouldBindQuery(&requestDto); err != nil {
+				_ = ctx.Error(
+					common_exceptions.InvalidBodyException{
+						BaseRestException: exceptions.BaseRestException{
+							ITrackableException: exceptions.WrapErrorWithTrackableException(err),
+							Message:             "can't deserialize request",
+						},
+					},
+				)
+				return
+			}
+
+			if err := ctx.ShouldBindUri(&requestDto); err != nil {
+				_ = ctx.Error(
+					common_exceptions.InvalidBodyException{
+						BaseRestException: exceptions.BaseRestException{
+							ITrackableException: exceptions.WrapErrorWithTrackableException(err),
+							Message:             "can't deserialize request",
+						},
+					},
+				)
+				return
+			}
 
 			if validationError := r.validator.Validate(&requestDto); validationError != nil {
 				var restException exceptions.IRestException
@@ -102,8 +131,7 @@ func RegisterRoute(router *gin.RouterGroup, route IRoute) {
 	}
 }
 
-func RouteFactory[TRequest interface{}, TResponse interface{}](
-	routeType RouteType,
+func CreateBaseRoute[TRequest interface{}, TResponse interface{}](
 	wrapper service_wrapper.IServiceWrapper,
 	path string,
 	handlerFunc handler.HFunc[TRequest, TResponse, request_env.RequestEnv],
@@ -118,12 +146,5 @@ func RouteFactory[TRequest interface{}, TResponse interface{}](
 		method:    method,
 	}
 
-	switch routeType {
-	case Base:
-		return &baseRoute
-	case Authorized:
-		return &AuthorizedRoute[TRequest, TResponse]{route: baseRoute}
-	}
-
-	return nil
+	return &baseRoute
 }

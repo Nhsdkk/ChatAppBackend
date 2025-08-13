@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"chat_app_backend/internal/extensions"
 	"context"
 	"fmt"
 	"mime/multipart"
@@ -17,14 +18,27 @@ const (
 	BucketNotFound          = "NoSuchBucket"
 )
 
+type Buckets = string
+
+const (
+	AvatarBucket Buckets = "avatar"
+)
+
+type FileType = string
+
+const (
+	Png  FileType = "png"
+	Jpeg          = "jpeg"
+)
+
 type IClient interface {
-	GetDownloadUrl(ctx context.Context, filename, bucketName string) (string, error)
-	UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, filename, bucketName string) (string, error)
-	DeleteFile(ctx context.Context, filename, bucketName string) error
-	ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename, bucketName string) (string, error)
-	CreateBucket(ctx context.Context, bucketName string) error
-	BucketExists(ctx context.Context, bucketName string) (bool, error)
-	FileExists(ctx context.Context, filename, bucketName string) (bool, error)
+	GetDownloadUrl(ctx context.Context, filename string, bucketName Buckets) (string, error)
+	UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, filename string, bucketName Buckets) (string, error)
+	DeleteFile(ctx context.Context, filename string, bucketName Buckets) error
+	ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename string, bucketName Buckets) (string, error)
+	CreateBucket(ctx context.Context, bucketName Buckets) error
+	BucketExists(ctx context.Context, bucketName Buckets) (bool, error)
+	FileExists(ctx context.Context, filename string, bucketName Buckets) (bool, error)
 }
 
 type Client struct {
@@ -32,7 +46,7 @@ type Client struct {
 	presignedUrlDuration time.Duration
 }
 
-func (c *Client) GetDownloadUrl(ctx context.Context, filename, bucketName string) (string, error) {
+func (c *Client) GetDownloadUrl(ctx context.Context, filename string, bucketName Buckets) (string, error) {
 	exists, err := c.FileExists(ctx, filename, bucketName)
 	if err != nil {
 		return "", err
@@ -53,7 +67,7 @@ func (c *Client) GetDownloadUrl(ctx context.Context, filename, bucketName string
 	return urlObject.String(), nil
 }
 
-func (c *Client) FileExists(ctx context.Context, filename, bucketName string) (bool, error) {
+func (c *Client) FileExists(ctx context.Context, filename string, bucketName Buckets) (bool, error) {
 	_, err := c.client.StatObject(ctx, bucketName, filename, minio.StatObjectOptions{})
 	if err == nil {
 		return true, nil
@@ -67,7 +81,7 @@ func (c *Client) FileExists(ctx context.Context, filename, bucketName string) (b
 	return false, nil
 }
 
-func (c *Client) UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, filename, bucketName string) (string, error) {
+func (c *Client) UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, filename string, bucketName Buckets) (string, error) {
 	exists, err := c.FileExists(ctx, filename, bucketName)
 	if err != nil {
 		return "", err
@@ -105,7 +119,7 @@ func (c *Client) UploadFile(ctx context.Context, fileHeader *multipart.FileHeade
 	return c.GetDownloadUrl(ctx, filename, bucketName)
 }
 
-func (c *Client) DeleteFile(ctx context.Context, filename, bucketName string) error {
+func (c *Client) DeleteFile(ctx context.Context, filename string, bucketName Buckets) error {
 	exists, err := c.FileExists(ctx, filename, bucketName)
 	if err != nil {
 		return err
@@ -118,7 +132,7 @@ func (c *Client) DeleteFile(ctx context.Context, filename, bucketName string) er
 	return c.client.RemoveObject(ctx, bucketName, filename, minio.RemoveObjectOptions{})
 }
 
-func (c *Client) ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename, bucketName string) (string, error) {
+func (c *Client) ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename string, bucketName Buckets) (string, error) {
 	exists, err := c.FileExists(ctx, filename, bucketName)
 	if err != nil {
 		return "", err
@@ -156,7 +170,7 @@ func (c *Client) ModifyFileContents(ctx context.Context, fileHeader *multipart.F
 	return c.GetDownloadUrl(ctx, filename, bucketName)
 }
 
-func (c *Client) CreateBucket(ctx context.Context, bucketName string) error {
+func (c *Client) CreateBucket(ctx context.Context, bucketName Buckets) error {
 	exists, getExistenceError := c.client.BucketExists(ctx, bucketName)
 	if getExistenceError != nil {
 		return getExistenceError
@@ -169,7 +183,7 @@ func (c *Client) CreateBucket(ctx context.Context, bucketName string) error {
 	return c.client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 }
 
-func (c *Client) BucketExists(ctx context.Context, bucketName string) (bool, error) {
+func (c *Client) BucketExists(ctx context.Context, bucketName Buckets) (bool, error) {
 	return c.client.BucketExists(ctx, bucketName)
 }
 
@@ -188,4 +202,8 @@ func CreateClient(cfg *S3Config) (*Client, error) {
 		client:               client,
 		presignedUrlDuration: duration,
 	}, nil
+}
+
+func ConstructFilenameFromFileType(fileType FileType) string {
+	return fmt.Sprintf("%s.%s", extensions.NewUUID(), fileType)
 }

@@ -1,13 +1,13 @@
 package users
 
 import (
-	interests2 "chat_app_backend/application/models/interests/get_many_by_ids"
 	"chat_app_backend/application/models/jwt_claims"
 	"chat_app_backend/application/models/users/register"
 	"chat_app_backend/internal/exceptions"
 	"chat_app_backend/internal/mapper"
 	"chat_app_backend/internal/password"
 	"chat_app_backend/internal/request_env"
+	"chat_app_backend/internal/s3"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
 
@@ -27,14 +27,22 @@ func (r RegisterHandler) Handle(
 	transactionError := services.
 		GetDbConnection().
 		CreateTransaction(ctx, func(queries *db_queries.Queries) exceptions.ITrackableException {
+			avatarFileName := s3.ConstructFilenameFromFileType(request.AvatarFileType)
+
+			avatarDownloadLink, fileUploadError := services.GetS3Client().
+				UploadFile(ctx, request.Avatar, avatarFileName, s3.AvatarBucket)
+
+			if fileUploadError != nil {
+				return exceptions.WrapErrorWithTrackableException(fileUploadError)
+			}
+
 			createUserParams := db_queries.CreateUserParams{
-				FullName: request.FullName,
-				Birthday: request.Birthday,
-				Gender:   request.Gender,
-				Email:    request.Email,
-				Password: password.HashPassword(request.Password),
-				// TODO(issue #5): fill with real avatar
-				AvatarFileName: "avatar.png",
+				FullName:       request.FullName,
+				Birthday:       request.Birthday,
+				Gender:         request.Gender,
+				Email:          request.Email,
+				Password:       password.HashPassword(request.Password),
+				AvatarFileName: avatarFileName,
 			}
 
 			user, createUserError := queries.CreateUser(ctx, createUserParams)
@@ -56,19 +64,6 @@ func (r RegisterHandler) Handle(
 				return exceptions.WrapErrorWithTrackableException(getInterestsError)
 			}
 
-			interestsMapped := make([]interests2.GetInterestsDto, len(interests))
-
-			for idx, interest := range interests {
-				err := mapper.Mapper{}.Map(
-					&interestsMapped[idx],
-					interest,
-				)
-
-				if err != nil {
-					return exceptions.WrapErrorWithTrackableException(err)
-				}
-			}
-
 			var claims jwt_claims.UserClaims
 			mappingErr := mapper.Mapper{}.Map(&claims, user)
 			if mappingErr != nil {
@@ -87,13 +82,15 @@ func (r RegisterHandler) Handle(
 				&response,
 				user,
 				struct {
-					Interests    []interests2.GetInterestsDto
-					AccessToken  string
-					RefreshToken string
+					AvatarDownloadLink string
+					Interests          []db_queries.Interest
+					AccessToken        string
+					RefreshToken       string
 				}{
-					Interests:    interestsMapped,
-					AccessToken:  accessToken.GetToken(),
-					RefreshToken: refreshToken.GetToken(),
+					AvatarDownloadLink: avatarDownloadLink,
+					Interests:          interests,
+					AccessToken:        accessToken.GetToken(),
+					RefreshToken:       refreshToken.GetToken(),
 				},
 			)
 

@@ -1,7 +1,9 @@
 package delete
 
-import "github.com/google/uuid"
+import (
+	"chat_app_backend/internal/extensions"
+)
 
 type DeleteUserRequestDto struct {
-	ID uuid.UUID `json:"id" binder:"path,id" validator:"not_empty"`
+	ID extensions.UUID `uri:"id" validator:"not_empty"`
 }
