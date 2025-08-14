@@ -21,7 +21,6 @@ type Querier interface {
 	GetUserInterests(ctx context.Context, id extensions.UUID) ([]Interest, error)
 	RemoveUser(ctx context.Context, id extensions.UUID) error
 	RemoveUserInterest(ctx context.Context, arg RemoveUserInterestParams) error
-	UpdateInterestIcon(ctx context.Context, arg UpdateInterestIconParams) (Interest, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
 

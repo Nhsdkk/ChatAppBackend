@@ -40,11 +40,3 @@ RETURNING *;
 -- name: DeleteInterest :exec
 DELETE FROM interests
 WHERE interests.id = @id;
-
--- name: UpdateInterestIcon :one
-UPDATE interests
-SET
-    icon_file_name = @icon_file_name
-WHERE
-    interests.id = @id
-RETURNING *;

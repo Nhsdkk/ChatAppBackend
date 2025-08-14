@@ -158,30 +158,3 @@ func (q *Queries) RemoveUserInterest(ctx context.Context, arg RemoveUserInterest
 	_, err := q.db.Exec(ctx, removeUserInterest, arg.UserID, arg.InterestIds)
 	return err
 }
-
-const updateInterestIcon = `-- name: UpdateInterestIcon :one
-UPDATE interests
-SET
-    icon_file_name = $1
-WHERE
-    interests.id = $2
-RETURNING id, title, icon_file_name, created_at, updated_at
-`
-
-type UpdateInterestIconParams struct {
-	IconFileName string
-	ID           extensions.UUID
-}
-
-func (q *Queries) UpdateInterestIcon(ctx context.Context, arg UpdateInterestIconParams) (Interest, error) {
-	row := q.db.QueryRow(ctx, updateInterestIcon, arg.IconFileName, arg.ID)
-	var i Interest
-	err := row.Scan(
-		&i.ID,
-		&i.Title,
-		&i.IconFileName,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
