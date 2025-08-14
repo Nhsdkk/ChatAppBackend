@@ -1,5 +1,5 @@
 -- name: GetManyInterestsByFilters :many
-SELECT id, title, icon_file_name, created_at, updated_at
+SELECT id, title, icon_file_name, created_at, updated_at, description
 FROM interests
 WHERE
     (sqlc.narg('ids')::uuid[] IS NULL OR interests.id = ANY(sqlc.narg('ids')::uuid[]))
@@ -13,7 +13,8 @@ SELECT
     interests.title,
     interests.icon_file_name,
     interests.created_at,
-    interests.updated_at
+    interests.updated_at,
+    interests.description
 FROM interests
 JOIN user_interests on interests.id = user_interests.interest_id
 WHERE user_interests.user_id = @id;
@@ -32,11 +33,19 @@ WHERE
 
 -- name: CreateInterest :one
 INSERT INTO interests
-(title, icon_file_name)
+(title, icon_file_name, description)
 VALUES
-(@title, @icon_file_name)
+(@title, @icon_file_name, @description)
 RETURNING *;
 
 -- name: DeleteInterest :exec
 DELETE FROM interests
 WHERE interests.id = @id;
+
+-- name: UpdateInterestDescription :one
+UPDATE interests
+SET
+    description = @description
+WHERE
+    id = @id
+RETURNING *;
