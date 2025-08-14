@@ -31,7 +31,9 @@ func (d DeleteUserHandler) Handle(
 		}
 	}
 
-	userDeletionError := service.GetDbConnection().GetQueries().RemoveUser(ctx, request.ID)
+	userDeletionError := service.GetDbConnection().
+		GetQueries().
+		RemoveUser(ctx, request.ID)
 	if userDeletionError != nil {
 		return nil, exceptions.WrapErrorWithTrackableException(userDeletionError)
 	}
