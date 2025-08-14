@@ -30,19 +30,20 @@ func (q *Queries) AssignInterestsToUser(ctx context.Context, arg AssignInterests
 
 const createInterest = `-- name: CreateInterest :one
 INSERT INTO interests
-(title, icon_file_name)
+(title, icon_file_name, description)
 VALUES
-($1, $2)
-RETURNING id, title, icon_file_name, created_at, updated_at
+($1, $2, $3)
+RETURNING id, title, icon_file_name, created_at, updated_at, description
 `
 
 type CreateInterestParams struct {
 	Title        string
 	IconFileName string
+	Description  string
 }
 
 func (q *Queries) CreateInterest(ctx context.Context, arg CreateInterestParams) (Interest, error) {
-	row := q.db.QueryRow(ctx, createInterest, arg.Title, arg.IconFileName)
+	row := q.db.QueryRow(ctx, createInterest, arg.Title, arg.IconFileName, arg.Description)
 	var i Interest
 	err := row.Scan(
 		&i.ID,
@@ -50,6 +51,7 @@ func (q *Queries) CreateInterest(ctx context.Context, arg CreateInterestParams) 
 		&i.IconFileName,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
 	)
 	return i, err
 }
@@ -65,7 +67,7 @@ func (q *Queries) DeleteInterest(ctx context.Context, id extensions.UUID) error 
 }
 
 const getManyInterestsByFilters = `-- name: GetManyInterestsByFilters :many
-SELECT id, title, icon_file_name, created_at, updated_at
+SELECT id, title, icon_file_name, created_at, updated_at, description
 FROM interests
 WHERE
     ($1::uuid[] IS NULL OR interests.id = ANY($1::uuid[]))
@@ -93,6 +95,7 @@ func (q *Queries) GetManyInterestsByFilters(ctx context.Context, arg GetManyInte
 			&i.IconFileName,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -110,7 +113,8 @@ SELECT
     interests.title,
     interests.icon_file_name,
     interests.created_at,
-    interests.updated_at
+    interests.updated_at,
+    interests.description
 FROM interests
 JOIN user_interests on interests.id = user_interests.interest_id
 WHERE user_interests.user_id = $1
@@ -131,6 +135,7 @@ func (q *Queries) GetUserInterests(ctx context.Context, id extensions.UUID) ([]I
 			&i.IconFileName,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -159,22 +164,22 @@ func (q *Queries) RemoveUserInterest(ctx context.Context, arg RemoveUserInterest
 	return err
 }
 
-const updateInterestIcon = `-- name: UpdateInterestIcon :one
+const updateInterestDescription = `-- name: UpdateInterestDescription :one
 UPDATE interests
 SET
-    icon_file_name = $1
+    description = $1
 WHERE
-    interests.id = $2
-RETURNING id, title, icon_file_name, created_at, updated_at
+    id = $2
+RETURNING id, title, icon_file_name, created_at, updated_at, description
 `
 
-type UpdateInterestIconParams struct {
-	IconFileName string
-	ID           extensions.UUID
+type UpdateInterestDescriptionParams struct {
+	Description string
+	ID          extensions.UUID
 }
 
-func (q *Queries) UpdateInterestIcon(ctx context.Context, arg UpdateInterestIconParams) (Interest, error) {
-	row := q.db.QueryRow(ctx, updateInterestIcon, arg.IconFileName, arg.ID)
+func (q *Queries) UpdateInterestDescription(ctx context.Context, arg UpdateInterestDescriptionParams) (Interest, error) {
+	row := q.db.QueryRow(ctx, updateInterestDescription, arg.Description, arg.ID)
 	var i Interest
 	err := row.Scan(
 		&i.ID,
@@ -182,6 +187,7 @@ func (q *Queries) UpdateInterestIcon(ctx context.Context, arg UpdateInterestIcon
 		&i.IconFileName,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
 	)
 	return i, err
 }

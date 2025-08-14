@@ -160,6 +160,7 @@ type Interest struct {
 	IconFileName string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	Description  string
 }
 
 type Message struct {
