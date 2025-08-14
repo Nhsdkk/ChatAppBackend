@@ -30,6 +30,7 @@ type FileType = string
 const (
 	Png  FileType = "png"
 	Jpeg          = "jpeg"
+	Svg           = "svg"
 )
 
 type IClient interface {
