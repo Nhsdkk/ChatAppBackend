@@ -2,6 +2,7 @@ package interests
 
 import (
 	"chat_app_backend/application/handlers/interests"
+	"chat_app_backend/application/models/interests/create"
 	interests2 "chat_app_backend/application/models/interests/get"
 	"chat_app_backend/internal/router"
 	"chat_app_backend/internal/service_wrapper"
@@ -28,6 +29,15 @@ func CreateInterestsController(
 					"/",
 					interests.GetInterestsHandler{}.Handle,
 					validator.Validator[interests2.GetInterestsRequestDto]{},
+					router.POST,
+				),
+			},
+			&router.AuthorizedRoute[create.CreateInterestRequestDto, create.CreateInterestResponseDto]{
+				Route: router.CreateBaseRoute(
+					wrapper,
+					"/create",
+					interests.CreateInterestHandler{}.Handle,
+					validator.Validator[create.CreateInterestRequestDto]{},
 					router.POST,
 				),
 			},
