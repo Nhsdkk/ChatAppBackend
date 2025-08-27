@@ -6,6 +6,11 @@ WHERE
   AND
     (sqlc.narg('name')::text IS NULL OR interests.title ILIKE sqlc.narg('name')::text || '%');
 
+-- name: GetInterestById :one
+SELECT *
+FROM interests
+WHERE id = @id;
+
 
 -- name: GetUserInterests :many
 SELECT 

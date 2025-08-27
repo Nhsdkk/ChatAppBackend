@@ -66,6 +66,26 @@ func (q *Queries) DeleteInterest(ctx context.Context, id extensions.UUID) error 
 	return err
 }
 
+const getInterestById = `-- name: GetInterestById :one
+SELECT id, title, icon_file_name, created_at, updated_at, description
+FROM interests
+WHERE id = $1
+`
+
+func (q *Queries) GetInterestById(ctx context.Context, id extensions.UUID) (Interest, error) {
+	row := q.db.QueryRow(ctx, getInterestById, id)
+	var i Interest
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.IconFileName,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
+	)
+	return i, err
+}
+
 const getManyInterestsByFilters = `-- name: GetManyInterestsByFilters :many
 SELECT id, title, icon_file_name, created_at, updated_at, description
 FROM interests
