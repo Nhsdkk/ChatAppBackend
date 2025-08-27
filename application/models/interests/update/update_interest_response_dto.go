@@ -1,19 +1,15 @@
-package get
+package update
 
 import (
 	"chat_app_backend/internal/extensions"
 	"time"
 )
 
-type GetInterestResponseDto struct {
+type UpdateInterestResponseDto struct {
 	ID               extensions.UUID `json:"id"`
 	Title            string          `json:"title"`
 	Description      string          `json:"description"`
 	IconDownloadLink string          `json:"icon_download_link"`
 	CreatedAt        time.Time       `json:"created_at"`
 	UpdatedAt        time.Time       `json:"updated_at"`
-}
-
-type GetInterestsResponseDto struct {
-	Interests []GetInterestResponseDto `json:"interests"`
 }

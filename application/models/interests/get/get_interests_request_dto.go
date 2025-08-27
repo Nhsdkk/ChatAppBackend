@@ -1,4 +1,4 @@
-package interests
+package get
 
 import "chat_app_backend/internal/extensions"
 

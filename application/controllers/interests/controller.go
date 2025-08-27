@@ -3,8 +3,9 @@ package interests
 import (
 	"chat_app_backend/application/handlers/interests"
 	"chat_app_backend/application/models/interests/create"
-	delete2 "chat_app_backend/application/models/interests/delete"
-	interests2 "chat_app_backend/application/models/interests/get"
+	"chat_app_backend/application/models/interests/delete"
+	"chat_app_backend/application/models/interests/get"
+	"chat_app_backend/application/models/interests/update"
 	"chat_app_backend/internal/router"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/validator"
@@ -24,12 +25,12 @@ func CreateInterestsController(
 		r,
 		"/interests",
 		[]router.IRoute{
-			&router.AuthorizedRoute[interests2.GetInterestsRequestDto, interests2.GetInterestsResponseDto]{
+			&router.AuthorizedRoute[get.GetInterestsRequestDto, get.GetInterestsResponseDto]{
 				Route: router.CreateBaseRoute(
 					wrapper,
 					"/",
 					interests.GetInterestsHandler{}.Handle,
-					validator.Validator[interests2.GetInterestsRequestDto]{},
+					validator.Validator[get.GetInterestsRequestDto]{},
 					router.POST,
 				),
 			},
@@ -42,13 +43,22 @@ func CreateInterestsController(
 					router.POST,
 				),
 			},
-			&router.AuthorizedRoute[delete2.DeleteInterestRequestDto, delete2.DeleteInterestResponseDto]{
+			&router.AuthorizedRoute[delete.DeleteInterestRequestDto, delete.DeleteInterestResponseDto]{
 				Route: router.CreateBaseRoute(
 					wrapper,
 					"/:id",
 					interests.DeleteInterestHandler{}.Handle,
-					validator.Validator[delete2.DeleteInterestRequestDto]{},
+					validator.Validator[delete.DeleteInterestRequestDto]{},
 					router.DELETE,
+				),
+			},
+			&router.AuthorizedRoute[update.UpdateInterestRequestDto, update.UpdateInterestResponseDto]{
+				Route: router.CreateBaseRoute(
+					wrapper,
+					"/:id",
+					interests.UpdateInterestsHandler{}.Handle,
+					validator.Validator[update.UpdateInterestRequestDto]{},
+					router.PUT,
 				),
 			},
 		},
