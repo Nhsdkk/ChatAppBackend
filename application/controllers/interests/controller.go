@@ -2,6 +2,7 @@ package interests
 
 import (
 	"chat_app_backend/application/handlers/interests"
+	"chat_app_backend/application/models/interests/assign"
 	"chat_app_backend/application/models/interests/create"
 	"chat_app_backend/application/models/interests/delete"
 	"chat_app_backend/application/models/interests/get"
@@ -58,6 +59,15 @@ func CreateInterestsController(
 					"/:id",
 					interests.UpdateInterestsHandler{}.Handle,
 					validator.Validator[update.UpdateInterestRequestDto]{},
+					router.PUT,
+				),
+			},
+			&router.AuthorizedRoute[assign.AssignInterestRequestDto, assign.AssignInterestResponseDto]{
+				Route: router.CreateBaseRoute(
+					wrapper,
+					"/assign",
+					interests.AssignInterestHandler{}.Handle,
+					validator.Validator[assign.AssignInterestRequestDto]{},
 					router.PUT,
 				),
 			},

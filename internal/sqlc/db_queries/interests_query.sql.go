@@ -167,20 +167,14 @@ func (q *Queries) GetUserInterests(ctx context.Context, id extensions.UUID) ([]I
 	return items, nil
 }
 
-const removeUserInterest = `-- name: RemoveUserInterest :exec
+const removeUserInterests = `-- name: RemoveUserInterests :exec
 DELETE FROM user_interests
 WHERE
-    user_id = $1 AND
-    interest_id = ANY ($2::uuid[])
+    user_id = $1
 `
 
-type RemoveUserInterestParams struct {
-	UserID      extensions.UUID
-	InterestIds []extensions.UUID
-}
-
-func (q *Queries) RemoveUserInterest(ctx context.Context, arg RemoveUserInterestParams) error {
-	_, err := q.db.Exec(ctx, removeUserInterest, arg.UserID, arg.InterestIds)
+func (q *Queries) RemoveUserInterests(ctx context.Context, userID extensions.UUID) error {
+	_, err := q.db.Exec(ctx, removeUserInterests, userID)
 	return err
 }
 
