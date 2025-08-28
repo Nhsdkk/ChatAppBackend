@@ -1,14 +1,16 @@
 package users
 
 import (
-	"chat_app_backend/application/controllers/users/validators"
+	interests_validators "chat_app_backend/application/controllers/validators/interests"
+	"chat_app_backend/application/controllers/validators/users"
 	"chat_app_backend/application/handlers/users"
-	delete2 "chat_app_backend/application/models/users/delete"
+	"chat_app_backend/application/models/users/delete"
 	"chat_app_backend/application/models/users/get_user_data"
 	"chat_app_backend/application/models/users/login"
 	"chat_app_backend/application/models/users/refresh_token"
 	"chat_app_backend/application/models/users/register"
 	"chat_app_backend/application/models/users/update"
+	"chat_app_backend/internal/extensions"
 	"chat_app_backend/internal/router"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/validator"
@@ -36,10 +38,21 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
 							RuleFor(
 								func(data *register.RegisterRequestDto) *string {
+									return &data.Avatar.Filename
+								},
+							).
+							Must(user_validators.AvatarFileTypeValidator{}).
+							WithMessage("avatar file type is invalid").
+							Validate,
+					).
+					AttachValidator(
+						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
+							RuleFor(
+								func(data *register.RegisterRequestDto) *string {
 									return &data.Email
 								},
 							).
-							Must(validators.EmailValidator{}).
+							Must(user_validators.EmailFormatValidator{}).
 							WithMessage("email is of wrong format").
 							Validate,
 					).
@@ -50,7 +63,7 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 									return &data.Birthday
 								},
 							).
-							Must(validators.BirthDateValidator{}).
+							Must(user_validators.BirthDateValidator{}).
 							WithMessage("you are not old enough to register").
 							Validate,
 					).
@@ -61,8 +74,53 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 									return &data.Password
 								},
 							).
-							Must(validators.PasswordValidator{}).
+							Must(user_validators.PasswordValidator{}).
 							WithMessage("password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)").
+							Validate,
+					).
+					AttachValidator(
+						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
+							RuleFor(
+								func(data *register.RegisterRequestDto) *string {
+									return &data.FullName
+								},
+							).
+							Must(
+								user_validators.NameUniquenessValidator{
+									Db: serviceWrapper.GetDbConnection(),
+								},
+							).
+							WithMessage("that full name is already taken").
+							Validate,
+					).
+					AttachValidator(
+						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
+							RuleFor(
+								func(data *register.RegisterRequestDto) *string {
+									return &data.Email
+								},
+							).
+							Must(
+								user_validators.EmailUniquenessValidator{
+									Db: serviceWrapper.GetDbConnection(),
+								},
+							).
+							WithMessage("that email is already used").
+							Validate,
+					).
+					AttachValidator(
+						validator.ExternalValidator[register.RegisterRequestDto, []extensions.UUID]{}.
+							RuleFor(
+								func(data *register.RegisterRequestDto) *[]extensions.UUID {
+									return &data.Interests
+								},
+							).
+							Must(
+								interests_validators.InterestsExistenceValidator{
+									Db: serviceWrapper.GetDbConnection(),
+								},
+							).
+							WithMessage("some interests not found").
 							Validate,
 					),
 				router.POST,
@@ -81,7 +139,22 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 					"/:id",
 					users.GetUserDataHandler{}.Handle,
 					validator.
-						Validator[get_user_data.GetUserDataRequestDto]{},
+						Validator[get_user_data.GetUserDataRequestDto]{}.
+						AttachValidator(
+							validator.ExternalValidator[get_user_data.GetUserDataRequestDto, extensions.UUID]{}.
+								RuleFor(
+									func(data *get_user_data.GetUserDataRequestDto) *extensions.UUID {
+										return &data.ID
+									},
+								).
+								Must(
+									user_validators.UserExistenceValidator{
+										Db: serviceWrapper.GetDbConnection(),
+									},
+								).
+								WithMessage("user with this id does not exist").
+								Validate,
+						),
 					router.GET,
 				),
 			},
@@ -93,13 +166,28 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 					Validator[refresh_token.RefreshTokenRequestDto]{},
 				router.POST,
 			),
-			&router.AuthorizedRoute[delete2.DeleteUserRequestDto, delete2.DeleteUserResponseDto]{
+			&router.AuthorizedRoute[delete.DeleteUserRequestDto, delete.DeleteUserResponseDto]{
 				Route: router.CreateBaseRoute(
 					serviceWrapper,
 					"/:id",
 					users.DeleteUserHandler{}.Handle,
 					validator.
-						Validator[delete2.DeleteUserRequestDto]{},
+						Validator[delete.DeleteUserRequestDto]{}.
+						AttachValidator(
+							validator.ExternalValidator[delete.DeleteUserRequestDto, extensions.UUID]{}.
+								RuleFor(
+									func(data *delete.DeleteUserRequestDto) *extensions.UUID {
+										return &data.ID
+									},
+								).
+								Must(
+									user_validators.UserExistenceValidator{
+										Db: serviceWrapper.GetDbConnection(),
+									},
+								).
+								WithMessage("user with this id does not exist").
+								Validate,
+						),
 					router.DELETE,
 				),
 			},
@@ -114,10 +202,22 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 							validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
 								RuleFor(
 									func(data *update.UpdateUserRequestDto) *string {
+										return &data.Avatar.Filename
+									},
+								).
+								Must(user_validators.AvatarFileTypeValidator{}).
+								WithMessage("avatar file type is invalid").
+								Optional().
+								Validate,
+						).
+						AttachValidator(
+							validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
+								RuleFor(
+									func(data *update.UpdateUserRequestDto) *string {
 										return data.Email
 									},
 								).
-								Must(validators.EmailValidator{}).
+								Must(user_validators.EmailFormatValidator{}).
 								WithMessage("email is of wrong format").
 								Optional().
 								Validate,
@@ -129,7 +229,7 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 										return data.Birthday
 									},
 								).
-								Must(validators.BirthDateValidator{}).
+								Must(user_validators.BirthDateValidator{}).
 								WithMessage("you are not old enough to register").
 								Optional().
 								Validate,
@@ -141,9 +241,56 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 										return data.PasswordString
 									},
 								).
-								Must(validators.PasswordValidator{}).
+								Must(user_validators.PasswordValidator{}).
 								WithMessage("password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)").
 								Optional().
+								Validate,
+						).
+						AttachValidator(
+							validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
+								RuleFor(
+									func(data *update.UpdateUserRequestDto) *string {
+										return data.FullName
+									},
+								).
+								Must(
+									user_validators.NameUniquenessValidator{
+										Db: serviceWrapper.GetDbConnection(),
+									},
+								).
+								Optional().
+								WithMessage("that full name is already taken").
+								Validate,
+						).
+						AttachValidator(
+							validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
+								RuleFor(
+									func(data *update.UpdateUserRequestDto) *string {
+										return data.Email
+									},
+								).
+								Must(
+									user_validators.EmailUniquenessValidator{
+										Db: serviceWrapper.GetDbConnection(),
+									},
+								).
+								Optional().
+								WithMessage("that email is already used").
+								Validate,
+						).
+						AttachValidator(
+							validator.ExternalValidator[update.UpdateUserRequestDto, extensions.UUID]{}.
+								RuleFor(
+									func(data *update.UpdateUserRequestDto) *extensions.UUID {
+										return &data.ID
+									},
+								).
+								Must(
+									user_validators.UserExistenceValidator{
+										Db: serviceWrapper.GetDbConnection(),
+									},
+								).
+								WithMessage("user with this id does not exist").
 								Validate,
 						),
 					router.PUT,

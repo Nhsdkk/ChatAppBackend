@@ -1,12 +1,15 @@
 package validator
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 type IValidation[T1, T2 any] interface {
 	Must(validation IInternalValidation[T2]) IValidation[T1, T2]
 	WithMessage(message string) IValidation[T1, T2]
 	Optional() IValidation[T1, T2]
-	Validate(data *T1) error
+	Validate(data *T1, ctx context.Context) error
 }
 
 type IExternalValidator[T1, T2 any] interface {
@@ -14,7 +17,7 @@ type IExternalValidator[T1, T2 any] interface {
 }
 
 type IInternalValidation[T any] interface {
-	Validate(data *T) bool
+	Validate(data *T, ctx context.Context) bool
 }
 
 type ExternalValidator[T1 any, T2 any] struct {
@@ -48,11 +51,11 @@ func (v Validation[T1, T2]) WithMessage(message string) IValidation[T1, T2] {
 	return v
 }
 
-func (v Validation[T1, T2]) Validate(data *T1) error {
+func (v Validation[T1, T2]) Validate(data *T1, ctx context.Context) error {
 	switch {
 	case v.optional && v.transformation(data) == nil:
 		return nil
-	case v.transformation(data) == nil, !v.validation.Validate(v.transformation(data)):
+	case v.transformation(data) == nil, !v.validation.Validate(v.transformation(data), ctx):
 		return errors.New(v.message)
 	default:
 		return nil

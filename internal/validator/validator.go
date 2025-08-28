@@ -3,16 +3,17 @@ package validator
 import (
 	validator "chat_app_backend/internal/validator/utils"
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 )
 
-type ValidationFunction[T any] = func(data *T) error
+type ValidationFunction[T any] = func(data *T, ctx context.Context) error
 
 type IValidator[T interface{}] interface {
-	Validate(value *T) error
+	Validate(value *T, ctx context.Context) error
 	AttachValidator(function ValidationFunction[T]) IValidator[T]
 }
 
@@ -25,7 +26,7 @@ func (v Validator[T]) AttachValidator(function ValidationFunction[T]) IValidator
 	return v
 }
 
-func (v Validator[T]) Validate(value *T) error {
+func (v Validator[T]) Validate(value *T, ctx context.Context) error {
 	t := reflect.TypeOf(value)
 	if t.Kind() != reflect.Pointer || t.Elem().Kind() != reflect.Struct {
 		return errors.New("can't parse tags on non pointer struct type")
@@ -34,7 +35,7 @@ func (v Validator[T]) Validate(value *T) error {
 	errs := validate(reflect.ValueOf(value).Elem())
 
 	for _, validation := range v.additionalValidations {
-		if err := validation(value); err != nil {
+		if err := validation(value, ctx); err != nil {
 			errs = append(errs, err)
 		}
 	}

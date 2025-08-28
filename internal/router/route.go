@@ -77,7 +77,7 @@ func (r *BaseRoute[TRequest, TResponse]) getEndpointHandler(preferredResponseSta
 				return
 			}
 
-			if validationError := r.validator.Validate(&requestDto); validationError != nil {
+			if validationError := r.validator.Validate(&requestDto, ctx); validationError != nil {
 				var restException exceptions.IRestException
 
 				switch {

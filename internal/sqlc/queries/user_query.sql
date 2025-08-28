@@ -4,6 +4,21 @@ FROM users
 WHERE users.email = @email
 LIMIT 1;
 
+-- name: NameExists :one
+SELECT COUNT(id) > 0
+FROM users
+WHERE full_name = @full_name;
+
+-- name: EmailExists :one
+SELECT COUNT(id) > 0
+FROM users
+WHERE email = @email;
+
+-- name: UserExists :one
+SELECT COUNT(id) > 0
+FROM users
+WHERE id = @id;
+
 -- name: GetUserById :one
 SELECT *
 FROM users

@@ -2,9 +2,11 @@ package validator_tests
 
 import (
 	"chat_app_backend/internal/validator"
+	"context"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type testStructNotEmpty struct {
@@ -23,7 +25,7 @@ func TestValidator_NotEmpty_ShouldWorkWithFilledValues(t *testing.T) {
 	}
 
 	validatorObject := validator.Validator[testStructNotEmpty]{}
-	require.NoError(t, validatorObject.Validate(&v))
+	require.NoError(t, validatorObject.Validate(&v, context.Background()))
 }
 
 func TestValidator_NotEmpty_ShouldFailWithUnfilledValues(t *testing.T) {
@@ -35,7 +37,7 @@ func TestValidator_NotEmpty_ShouldFailWithUnfilledValues(t *testing.T) {
 	validatorObject := validator.Validator[testStructNotEmpty]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v),
+		validatorObject.Validate(&v, context.Background()),
 		`validation errors occurred:
 field idVal is empty, but is required to be filled
 field intVal is empty, but is required to be filled`,

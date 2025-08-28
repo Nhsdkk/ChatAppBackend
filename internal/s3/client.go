@@ -6,10 +6,16 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/minio/minio-go/v7"
 )
+
+var filenameRegexp = regexp.MustCompile("(?P<filename>\\S|\\s)+\\.(?P<fileType>\\w+)")
+
+const fileTypeRegexpCaptureGroupName = "fileType"
+const fileNameRegexpCaptureGroupName = "filename"
 
 type Statuses = string
 
@@ -37,7 +43,7 @@ type IClient interface {
 	GetDownloadUrl(ctx context.Context, filename string, bucketName Buckets) (string, error)
 	UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, filename string, bucketName Buckets) (string, error)
 	DeleteFile(ctx context.Context, filename string, bucketName Buckets) error
-	ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename string, bucketName Buckets) (string, error)
+	ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename, newFileName string, bucketName Buckets) (string, error)
 	CreateBucket(ctx context.Context, bucketName Buckets) error
 	BucketExists(ctx context.Context, bucketName Buckets) (bool, error)
 	FileExists(ctx context.Context, filename string, bucketName Buckets) (bool, error)
@@ -134,7 +140,7 @@ func (c *Client) DeleteFile(ctx context.Context, filename string, bucketName Buc
 	return c.client.RemoveObject(ctx, bucketName, filename, minio.RemoveObjectOptions{})
 }
 
-func (c *Client) ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename string, bucketName Buckets) (string, error) {
+func (c *Client) ModifyFileContents(ctx context.Context, fileHeader *multipart.FileHeader, filename, newFileName string, bucketName Buckets) (string, error) {
 	exists, err := c.FileExists(ctx, filename, bucketName)
 	if err != nil {
 		return "", err
@@ -156,7 +162,7 @@ func (c *Client) ModifyFileContents(ctx context.Context, fileHeader *multipart.F
 	_, uploadError := c.client.PutObject(
 		ctx,
 		bucketName,
-		filename,
+		newFileName,
 		file,
 		fileHeader.Size,
 		minio.PutObjectOptions{
@@ -167,6 +173,12 @@ func (c *Client) ModifyFileContents(ctx context.Context, fileHeader *multipart.F
 
 	if uploadError != nil {
 		return "", uploadError
+	}
+
+	if filename != newFileName {
+		if removeError := c.client.RemoveObject(ctx, bucketName, filename, minio.RemoveObjectOptions{}); removeError != nil {
+			return "", removeError
+		}
 	}
 
 	return c.GetDownloadUrl(ctx, filename, bucketName)
@@ -204,6 +216,27 @@ func CreateClient(cfg *S3Config) (*Client, error) {
 		client:               client,
 		presignedUrlDuration: duration,
 	}, nil
+}
+
+func DeconstructFileName(fileName string) (string, FileType, error) {
+	indexFileType := filenameRegexp.SubexpIndex(fileTypeRegexpCaptureGroupName)
+	indexFileName := filenameRegexp.SubexpIndex(fileNameRegexpCaptureGroupName)
+	matches := filenameRegexp.FindStringSubmatch(fileName)
+
+	if indexFileType >= len(matches) || indexFileName >= len(matches) {
+		return "", Png, fmt.Errorf("can't decode file type from filename %s", fileName)
+	}
+
+	switch matches[indexFileType] {
+	case "png":
+		return matches[indexFileName], Png, nil
+	case "jpeg":
+		return matches[indexFileName], Jpeg, nil
+	case "svg":
+		return matches[indexFileName], Svg, nil
+	default:
+		return matches[indexFileName], Png, fmt.Errorf("unknown file type %s", matches[indexFileType])
+	}
 }
 
 func ConstructFilenameFromFileType(fileType FileType) string {

@@ -2,6 +2,7 @@ package validator_tests
 
 import (
 	"chat_app_backend/internal/validator"
+	"context"
 	"strings"
 	"testing"
 
@@ -22,7 +23,7 @@ type IdValidator struct {
 	RequiredId int
 }
 
-func (i IdValidator) Validate(id *int) bool {
+func (i IdValidator) Validate(id *int, _ context.Context) bool {
 	if *id != i.RequiredId {
 		return false
 	}
@@ -32,7 +33,7 @@ func (i IdValidator) Validate(id *int) bool {
 
 type NameValidator struct{}
 
-func (n NameValidator) Validate(name *string) bool {
+func (n NameValidator) Validate(name *string, _ context.Context) bool {
 	if len(*name) < 10 {
 		return false
 	}
@@ -42,7 +43,7 @@ func (n NameValidator) Validate(name *string) bool {
 
 type EmailValidator struct{}
 
-func (e EmailValidator) Validate(email *string) bool {
+func (e EmailValidator) Validate(email *string, _ context.Context) bool {
 	if !strings.Contains(*email, "@") {
 		return false
 	}
@@ -92,7 +93,7 @@ func TestValidator_CustomValidators_ShouldWorkWithRightValue(t *testing.T) {
 					WithMessage("id does not match").
 					Validate,
 			).
-			Validate(&v),
+			Validate(&v, context.Background()),
 	)
 }
 
@@ -139,7 +140,7 @@ func TestValidator_CustomValidators_ShouldFailWithWrongValue(t *testing.T) {
 					WithMessage("id does not match").
 					Validate,
 			).
-			Validate(&v),
+			Validate(&v, context.Background()),
 		`validation errors occurred:
 name is too short
 email has wrong format
@@ -165,7 +166,7 @@ func TestValidator_CustomValidators_ShouldFailWithEmptyValueWithoutOptional(t *t
 					WithMessage("email has wrong format").
 					Validate,
 			).
-			Validate(&v),
+			Validate(&v, context.Background()),
 		`validation errors occurred:
 email has wrong format`,
 	)
@@ -190,6 +191,6 @@ func TestValidator_CustomValidators_ShouldWorkWithEmptyValueAndOptional(t *testi
 					Optional().
 					Validate,
 			).
-			Validate(&v),
+			Validate(&v, context.Background()),
 	)
 }

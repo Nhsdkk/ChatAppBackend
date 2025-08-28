@@ -2,8 +2,10 @@ package validator_tests
 
 import (
 	"chat_app_backend/internal/validator"
-	"github.com/stretchr/testify/require"
+	"context"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testStructComparison struct {
@@ -27,7 +29,7 @@ func TestValidator_Comparison_ShouldWorkWithPassingCondition(t *testing.T) {
 	}
 
 	validatorObject := validator.Validator[testStructComparison]{}
-	require.NoError(t, validatorObject.Validate(&v))
+	require.NoError(t, validatorObject.Validate(&v, context.Background()))
 }
 
 func TestValidator_Comparison_ShouldFailWithNotPassingCondition(t *testing.T) {
@@ -42,7 +44,7 @@ func TestValidator_Comparison_ShouldFailWithNotPassingCondition(t *testing.T) {
 	validatorObject := validator.Validator[testStructComparison]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v),
+		validatorObject.Validate(&v, context.Background()),
 		`validation errors occurred:
 the value in field intVal should be gte than 0 but it is not
 the value in field uint8Val should be eq than 5 but it is not`,

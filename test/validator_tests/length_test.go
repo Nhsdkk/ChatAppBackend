@@ -2,8 +2,10 @@ package validator_tests
 
 import (
 	"chat_app_backend/internal/validator"
-	"github.com/stretchr/testify/require"
+	"context"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testStructLength struct {
@@ -18,7 +20,7 @@ func TestValidator_Length_ShouldWorkWhenPassedCorrectValues(t *testing.T) {
 	}
 
 	validatorObject := validator.Validator[testStructLength]{}
-	require.NoError(t, validatorObject.Validate(&v))
+	require.NoError(t, validatorObject.Validate(&v, context.Background()))
 }
 
 func TestValidator_Length_ShouldWorkWhenPassedWrongValues(t *testing.T) {
@@ -30,7 +32,7 @@ func TestValidator_Length_ShouldWorkWhenPassedWrongValues(t *testing.T) {
 	validatorObject := validator.Validator[testStructLength]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v),
+		validatorObject.Validate(&v, context.Background()),
 		`validation errors occurred:
 length of value under field StringVal is not eq than 3
 length of value under field SliceVal is not lt than 5`,

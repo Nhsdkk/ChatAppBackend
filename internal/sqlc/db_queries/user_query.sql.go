@@ -57,6 +57,19 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const emailExists = `-- name: EmailExists :one
+SELECT COUNT(id) > 0
+FROM users
+WHERE email = $1
+`
+
+func (q *Queries) EmailExists(ctx context.Context, email string) (bool, error) {
+	row := q.db.QueryRow(ctx, emailExists, email)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, full_name, birthday, gender, email, password, avatar_file_name, online, email_verified, last_seen, created_at, updated_at, role
 FROM users
@@ -110,6 +123,19 @@ func (q *Queries) GetUserById(ctx context.Context, id extensions.UUID) (User, er
 		&i.Role,
 	)
 	return i, err
+}
+
+const nameExists = `-- name: NameExists :one
+SELECT COUNT(id) > 0
+FROM users
+WHERE full_name = $1
+`
+
+func (q *Queries) NameExists(ctx context.Context, fullName string) (bool, error) {
+	row := q.db.QueryRow(ctx, nameExists, fullName)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const removeUser = `-- name: RemoveUser :exec
@@ -183,4 +209,17 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Role,
 	)
 	return i, err
+}
+
+const userExists = `-- name: UserExists :one
+SELECT COUNT(id) > 0
+FROM users
+WHERE id = $1
+`
+
+func (q *Queries) UserExists(ctx context.Context, id extensions.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, userExists, id)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }
