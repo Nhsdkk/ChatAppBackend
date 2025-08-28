@@ -1,0 +1,50 @@
+package validator
+
+import "errors"
+
+type IValidation[T1, T2 any] interface {
+	Must(validation IInternalValidation[T2]) IValidation[T1, T2]
+	WithMessage(message string) IValidation[T1, T2]
+	Validate(data *T1) error
+}
+
+type IExternalValidator[T1, T2 any] interface {
+	RuleFor(func(data T1) T2) IValidation[T1, T2]
+}
+
+type IInternalValidation[T any] interface {
+	Validate(data *T) bool
+}
+
+type ExternalValidator[T1 any, T2 any] struct {
+}
+
+func (e ExternalValidator[T1, T2]) RuleFor(f func(data *T1) *T2) IValidation[T1, T2] {
+	return Validation[T1, T2]{
+		transformation: f,
+	}
+}
+
+type Validation[T1, T2 any] struct {
+	transformation func(data *T1) *T2
+	validation     IInternalValidation[T2]
+	message        string
+}
+
+func (v Validation[T1, T2]) Must(validation IInternalValidation[T2]) IValidation[T1, T2] {
+	v.validation = validation
+	return v
+}
+
+func (v Validation[T1, T2]) WithMessage(message string) IValidation[T1, T2] {
+	v.message = message
+	return v
+}
+
+func (v Validation[T1, T2]) Validate(data *T1) error {
+	if !v.validation.Validate(v.transformation(data)) {
+		return errors.New(v.message)
+	}
+
+	return nil
+}

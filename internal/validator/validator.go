@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-type ValidationFunction[T interface{}] = func(data *T) error
+type ValidationFunction[T any] = func(data *T) error
 
 type IValidator[T interface{}] interface {
 	Validate(value *T) error

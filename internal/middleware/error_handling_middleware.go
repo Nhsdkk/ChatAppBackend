@@ -5,6 +5,7 @@ import (
 	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/logger"
 	"errors"
+
 	"github.com/gin-gonic/gin"
 )
 
