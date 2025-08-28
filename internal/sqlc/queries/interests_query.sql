@@ -30,11 +30,10 @@ INSERT INTO user_interests
 VALUES
 (@user_id, unnest(@interest_ids::uuid[]));
 
--- name: RemoveUserInterest :exec
+-- name: RemoveUserInterests :exec
 DELETE FROM user_interests
 WHERE
-    user_id = @user_id AND
-    interest_id = ANY (@interest_ids::uuid[]);
+    user_id = @user_id;
 
 -- name: CreateInterest :one
 INSERT INTO interests
