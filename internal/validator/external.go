@@ -5,6 +5,7 @@ import "errors"
 type IValidation[T1, T2 any] interface {
 	Must(validation IInternalValidation[T2]) IValidation[T1, T2]
 	WithMessage(message string) IValidation[T1, T2]
+	Optional() IValidation[T1, T2]
 	Validate(data *T1) error
 }
 
@@ -28,7 +29,13 @@ func (e ExternalValidator[T1, T2]) RuleFor(f func(data *T1) *T2) IValidation[T1,
 type Validation[T1, T2 any] struct {
 	transformation func(data *T1) *T2
 	validation     IInternalValidation[T2]
+	optional       bool
 	message        string
+}
+
+func (v Validation[T1, T2]) Optional() IValidation[T1, T2] {
+	v.optional = true
+	return v
 }
 
 func (v Validation[T1, T2]) Must(validation IInternalValidation[T2]) IValidation[T1, T2] {
@@ -42,9 +49,12 @@ func (v Validation[T1, T2]) WithMessage(message string) IValidation[T1, T2] {
 }
 
 func (v Validation[T1, T2]) Validate(data *T1) error {
-	if !v.validation.Validate(v.transformation(data)) {
+	switch {
+	case v.optional && v.transformation(data) == nil:
+		return nil
+	case v.transformation(data) == nil, !v.validation.Validate(v.transformation(data)):
 		return errors.New(v.message)
+	default:
+		return nil
 	}
-
-	return nil
 }

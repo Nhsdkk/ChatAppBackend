@@ -12,6 +12,7 @@ import (
 	"chat_app_backend/internal/router"
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/validator"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -31,9 +32,39 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 				users.RegisterHandler{}.Handle,
 				validator.
 					Validator[register.RegisterRequestDto]{}.
-					AttachValidator(func(data *register.RegisterRequestDto) error { return validators.ValidateEmail(data.Email) }).
-					AttachValidator(func(data *register.RegisterRequestDto) error { return validators.ValidateBirthDate(data.Birthday) }).
-					AttachValidator(func(data *register.RegisterRequestDto) error { return validators.ValidatePassword(data.Password) }),
+					AttachValidator(
+						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
+							RuleFor(
+								func(data *register.RegisterRequestDto) *string {
+									return &data.Email
+								},
+							).
+							Must(validators.EmailValidator{}).
+							WithMessage("email is of wrong format").
+							Validate,
+					).
+					AttachValidator(
+						validator.ExternalValidator[register.RegisterRequestDto, time.Time]{}.
+							RuleFor(
+								func(data *register.RegisterRequestDto) *time.Time {
+									return &data.Birthday
+								},
+							).
+							Must(validators.BirthDateValidator{}).
+							WithMessage("you are not old enough to register").
+							Validate,
+					).
+					AttachValidator(
+						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
+							RuleFor(
+								func(data *register.RegisterRequestDto) *string {
+									return &data.Password
+								},
+							).
+							Must(validators.PasswordValidator{}).
+							WithMessage("password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)").
+							Validate,
+					),
 				router.POST,
 			),
 			router.CreateBaseRoute(
@@ -79,24 +110,42 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 					users.UpdateUserHandler{}.Handle,
 					validator.
 						Validator[update.UpdateUserRequestDto]{}.
-						AttachValidator(func(data *update.UpdateUserRequestDto) error {
-							if data.PasswordString == nil {
-								return nil
-							}
-							return validators.ValidatePassword(*data.PasswordString)
-						}).
-						AttachValidator(func(data *update.UpdateUserRequestDto) error {
-							if data.Email == nil {
-								return nil
-							}
-							return validators.ValidateEmail(*data.Email)
-						}).
-						AttachValidator(func(data *update.UpdateUserRequestDto) error {
-							if data.Birthday == nil {
-								return nil
-							}
-							return validators.ValidateBirthDate(*data.Birthday)
-						}),
+						AttachValidator(
+							validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
+								RuleFor(
+									func(data *update.UpdateUserRequestDto) *string {
+										return data.Email
+									},
+								).
+								Must(validators.EmailValidator{}).
+								WithMessage("email is of wrong format").
+								Optional().
+								Validate,
+						).
+						AttachValidator(
+							validator.ExternalValidator[update.UpdateUserRequestDto, time.Time]{}.
+								RuleFor(
+									func(data *update.UpdateUserRequestDto) *time.Time {
+										return data.Birthday
+									},
+								).
+								Must(validators.BirthDateValidator{}).
+								WithMessage("you are not old enough to register").
+								Optional().
+								Validate,
+						).
+						AttachValidator(
+							validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
+								RuleFor(
+									func(data *update.UpdateUserRequestDto) *string {
+										return data.PasswordString
+									},
+								).
+								Must(validators.PasswordValidator{}).
+								WithMessage("password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)").
+								Optional().
+								Validate,
+						),
 					router.PUT,
 				),
 			},

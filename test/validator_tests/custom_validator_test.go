@@ -14,6 +14,10 @@ type testStructCustomValidators struct {
 	email string
 }
 
+type testStructCustomValidatorsOptional struct {
+	email *string
+}
+
 type IdValidator struct {
 	RequiredId int
 }
@@ -140,5 +144,52 @@ func TestValidator_CustomValidators_ShouldFailWithWrongValue(t *testing.T) {
 name is too short
 email has wrong format
 id does not match`,
+	)
+}
+
+func TestValidator_CustomValidators_ShouldFailWithEmptyValueWithoutOptional(t *testing.T) {
+	v := testStructCustomValidatorsOptional{}
+
+	validatorObject := validator.Validator[testStructCustomValidatorsOptional]{}
+	require.EqualError(
+		t,
+		validatorObject.
+			AttachValidator(
+				validator.ExternalValidator[testStructCustomValidatorsOptional, string]{}.
+					RuleFor(
+						func(data *testStructCustomValidatorsOptional) *string {
+							return data.email
+						},
+					).
+					Must(EmailValidator{}).
+					WithMessage("email has wrong format").
+					Validate,
+			).
+			Validate(&v),
+		`validation errors occurred:
+email has wrong format`,
+	)
+}
+
+func TestValidator_CustomValidators_ShouldWorkWithEmptyValueAndOptional(t *testing.T) {
+	v := testStructCustomValidatorsOptional{}
+
+	validatorObject := validator.Validator[testStructCustomValidatorsOptional]{}
+	require.NoError(
+		t,
+		validatorObject.
+			AttachValidator(
+				validator.ExternalValidator[testStructCustomValidatorsOptional, string]{}.
+					RuleFor(
+						func(data *testStructCustomValidatorsOptional) *string {
+							return data.email
+						},
+					).
+					Must(EmailValidator{}).
+					WithMessage("email has wrong format").
+					Optional().
+					Validate,
+			).
+			Validate(&v),
 	)
 }
