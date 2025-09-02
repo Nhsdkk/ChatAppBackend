@@ -30,7 +30,9 @@ func (c CreateInterestHandler) Handle(
 		}
 	}
 
-	filename := s3.ConstructFilenameFromFileType(request.IconFileType)
+	_, iconFileType, _ := s3.DeconstructFileName(request.Icon.Filename)
+	filename := s3.ConstructFilenameFromFileType(iconFileType)
+
 	iconDownloadLink, fileUploadError := services.GetS3Client().
 		UploadFile(ctx, request.Icon, filename, s3.InterestsIconBucket)
 	if fileUploadError != nil {

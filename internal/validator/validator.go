@@ -1,18 +1,18 @@
 package validator
 
 import (
+	"chat_app_backend/internal/request_env"
 	validator "chat_app_backend/internal/validator/utils"
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 )
 
-type ValidationFunction[T interface{}] = func(data *T) error
-
 type IValidator[T interface{}] interface {
-	Validate(value *T) error
+	Validate(value *T, ctx context.Context, env request_env.RequestEnv) error
 	AttachValidator(function ValidationFunction[T]) IValidator[T]
 }
 
@@ -25,29 +25,30 @@ func (v Validator[T]) AttachValidator(function ValidationFunction[T]) IValidator
 	return v
 }
 
-func (v Validator[T]) Validate(value *T) error {
+func (v Validator[T]) Validate(value *T, ctx context.Context, env request_env.RequestEnv) error {
 	t := reflect.TypeOf(value)
 	if t.Kind() != reflect.Pointer || t.Elem().Kind() != reflect.Struct {
 		return errors.New("can't parse tags on non pointer struct type")
 	}
 
-	errs := validate(reflect.ValueOf(value).Elem())
+	tagValidations := validate(reflect.ValueOf(value).Elem())
+
+	if len(tagValidations) != 0 {
+		msgs := make([]string, len(tagValidations))
+
+		for idx, err := range tagValidations {
+			msgs[idx] = err.Error()
+		}
+
+		return fmt.Errorf("validation errors occurred:\n%s", strings.Join(msgs, "\n"))
+	}
 
 	for _, validation := range v.additionalValidations {
-		if err := validation(value); err != nil {
-			errs = append(errs, err)
+		if err := validation(value, ctx, env); err != nil {
+			return err
 		}
 	}
 
-	msgs := make([]string, len(errs))
-
-	for idx, err := range errs {
-		msgs[idx] = err.Error()
-	}
-
-	if len(errs) != 0 {
-		return errors.New(fmt.Sprintf("validation errors occurred:\n%s", strings.Join(msgs, "\n")))
-	}
 	return nil
 }
 

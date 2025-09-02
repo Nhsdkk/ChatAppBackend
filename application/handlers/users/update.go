@@ -57,9 +57,18 @@ func (u UpdateUserHandler) Handle(
 	}
 
 	var downloadLink *string
+	newFileName := user.AvatarFileName
+
 	if request.Avatar != nil {
+		fileUUID, oldFileType, _ := s3.DeconstructFileName(user.AvatarFileName)
+		_, newFileType, _ := s3.DeconstructFileName(request.Avatar.Filename)
+
+		if oldFileType != newFileType {
+			newFileName = fmt.Sprintf("%s.%s", fileUUID, newFileType)
+		}
+
 		link, err := service.GetS3Client().
-			ModifyFileContents(ctx, request.Avatar, user.AvatarFileName, s3.AvatarsBucket)
+			ModifyFileContents(ctx, request.Avatar, user.AvatarFileName, newFileName, s3.AvatarsBucket)
 
 		if err != nil {
 			return nil, exceptions.WrapErrorWithTrackableException(err)
@@ -90,7 +99,7 @@ func (u UpdateUserHandler) Handle(
 			Online         *bool
 		}{
 			Password:       newPasswordBytes,
-			AvatarFileName: nil,
+			AvatarFileName: &newFileName,
 			Gender:         nullGender,
 			Online:         nil,
 			Role:           nullRole,

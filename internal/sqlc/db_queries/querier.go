@@ -15,15 +15,19 @@ type Querier interface {
 	CreateInterest(ctx context.Context, arg CreateInterestParams) (Interest, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteInterest(ctx context.Context, id extensions.UUID) error
+	EmailExists(ctx context.Context, email string) (bool, error)
+	ExistenceCheck(ctx context.Context, ids []extensions.UUID) (int64, error)
 	GetInterestById(ctx context.Context, id extensions.UUID) (Interest, error)
 	GetManyInterestsByFilters(ctx context.Context, arg GetManyInterestsByFiltersParams) ([]Interest, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserById(ctx context.Context, id extensions.UUID) (User, error)
 	GetUserInterests(ctx context.Context, id extensions.UUID) ([]Interest, error)
+	NameExists(ctx context.Context, fullName string) (bool, error)
 	RemoveUser(ctx context.Context, id extensions.UUID) error
 	RemoveUserInterests(ctx context.Context, userID extensions.UUID) error
-	UpdateInterestDescription(ctx context.Context, arg UpdateInterestDescriptionParams) (Interest, error)
+	UpdateInterest(ctx context.Context, arg UpdateInterestParams) (Interest, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	UserExists(ctx context.Context, id extensions.UUID) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)

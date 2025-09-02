@@ -11,6 +11,10 @@ SELECT *
 FROM interests
 WHERE id = @id;
 
+-- name: ExistenceCheck :one
+SELECT COUNT(id)
+FROM interests
+WHERE id = ANY(@ids::uuid[]);
 
 -- name: GetUserInterests :many
 SELECT 
@@ -46,10 +50,11 @@ RETURNING *;
 DELETE FROM interests
 WHERE interests.id = @id;
 
--- name: UpdateInterestDescription :one
+-- name: UpdateInterest :one
 UPDATE interests
 SET
-    description = @description
+    description = sqlc.narg('description')::text,
+    icon_file_name = sqlc.narg('icon_file_name')::varchar(255)
 WHERE
     id = @id
 RETURNING *;

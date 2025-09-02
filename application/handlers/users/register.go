@@ -29,7 +29,8 @@ func (r RegisterHandler) Handle(
 	transactionError := services.
 		GetDbConnection().
 		CreateTransaction(ctx, func(queries *db_queries.Queries) exceptions.ITrackableException {
-			avatarFileName := s3.ConstructFilenameFromFileType(request.AvatarFileType)
+			_, avatarFileType, _ := s3.DeconstructFileName(request.Avatar.Filename)
+			avatarFileName := s3.ConstructFilenameFromFileType(avatarFileType)
 
 			avatarDownloadLink, fileUploadError := services.GetS3Client().
 				UploadFile(ctx, request.Avatar, avatarFileName, s3.AvatarsBucket)

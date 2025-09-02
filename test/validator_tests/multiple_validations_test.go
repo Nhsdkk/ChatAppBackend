@@ -2,8 +2,10 @@ package validator_tests
 
 import (
 	"chat_app_backend/internal/validator"
-	"github.com/stretchr/testify/require"
+	"context"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testStructMultipleValidations struct {
@@ -18,7 +20,7 @@ func TestValidator_MultipleValidations_ShouldWorkWhenPassedRightValues(t *testin
 	}
 	validatorObject := validator.Validator[testStructMultipleValidations]{}
 
-	require.NoError(t, validatorObject.Validate(&v))
+	require.NoError(t, validatorObject.Validate(&v, context.Background(), requestEnv))
 }
 
 func TestValidator_MultipleValidations_ShouldFailWhenPassedWrongValues(t *testing.T) {
@@ -30,7 +32,7 @@ func TestValidator_MultipleValidations_ShouldFailWhenPassedWrongValues(t *testin
 	validatorObject := validator.Validator[testStructMultipleValidations]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v),
+		validatorObject.Validate(&v, context.Background(), requestEnv),
 		`validation errors occurred:
 field intValue is empty, but is required to be filled
 the value in field intValue should be gt than 5 but it is not`,

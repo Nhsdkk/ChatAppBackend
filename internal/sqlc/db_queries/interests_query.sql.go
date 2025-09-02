@@ -66,6 +66,19 @@ func (q *Queries) DeleteInterest(ctx context.Context, id extensions.UUID) error 
 	return err
 }
 
+const existenceCheck = `-- name: ExistenceCheck :one
+SELECT COUNT(id)
+FROM interests
+WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) ExistenceCheck(ctx context.Context, ids []extensions.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, existenceCheck, ids)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getInterestById = `-- name: GetInterestById :one
 SELECT id, title, icon_file_name, created_at, updated_at, description
 FROM interests
@@ -178,22 +191,24 @@ func (q *Queries) RemoveUserInterests(ctx context.Context, userID extensions.UUI
 	return err
 }
 
-const updateInterestDescription = `-- name: UpdateInterestDescription :one
+const updateInterest = `-- name: UpdateInterest :one
 UPDATE interests
 SET
-    description = $1
+    description = $1::text,
+    icon_file_name = $2::varchar(255)
 WHERE
-    id = $2
+    id = $3
 RETURNING id, title, icon_file_name, created_at, updated_at, description
 `
 
-type UpdateInterestDescriptionParams struct {
-	Description string
-	ID          extensions.UUID
+type UpdateInterestParams struct {
+	Description  *string
+	IconFileName *string
+	ID           extensions.UUID
 }
 
-func (q *Queries) UpdateInterestDescription(ctx context.Context, arg UpdateInterestDescriptionParams) (Interest, error) {
-	row := q.db.QueryRow(ctx, updateInterestDescription, arg.Description, arg.ID)
+func (q *Queries) UpdateInterest(ctx context.Context, arg UpdateInterestParams) (Interest, error) {
+	row := q.db.QueryRow(ctx, updateInterest, arg.Description, arg.IconFileName, arg.ID)
 	var i Interest
 	err := row.Scan(
 		&i.ID,

@@ -10,6 +10,7 @@ import (
 	"chat_app_backend/internal/service_wrapper"
 	"chat_app_backend/internal/sqlc/db_queries"
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -49,10 +50,18 @@ func (u UpdateInterestsHandler) Handle(
 	}
 
 	var downloadLink string
+	newFileName := interest.IconFileName
 
 	if request.Icon != nil {
+		fileUUID, oldFileType, _ := s3.DeconstructFileName(interest.IconFileName)
+		_, newFileType, _ := s3.DeconstructFileName(request.Icon.Filename)
+
+		if oldFileType != newFileType {
+			newFileName = fmt.Sprintf("%s.%s", fileUUID, newFileType)
+		}
+
 		newDownloadLink, uploadError := services.GetS3Client().
-			ModifyFileContents(ctx, request.Icon, interest.IconFileName, s3.InterestsIconBucket)
+			ModifyFileContents(ctx, request.Icon, interest.IconFileName, newFileName, s3.InterestsIconBucket)
 
 		if uploadError != nil {
 			return nil, exceptions.WrapErrorWithTrackableException(uploadError)
@@ -70,39 +79,35 @@ func (u UpdateInterestsHandler) Handle(
 		downloadLink = storedDownloadLink
 	}
 
-	if request.Description != nil {
-		var updateParams db_queries.UpdateInterestDescriptionParams
+	var updateParams db_queries.UpdateInterestParams
 
-		updateParamsMappingError := mapper.Mapper{}.Map(
-			&updateParams,
-			*request,
-			struct {
-				Description string
-			}{
-				Description: *request.Description,
-			},
-		)
+	updateParamsMappingError := mapper.Mapper{}.Map(
+		&updateParams,
+		*request,
+		struct {
+			IconFileName *string
+		}{
+			IconFileName: &newFileName,
+		},
+	)
 
-		if updateParamsMappingError != nil {
-			return nil, exceptions.WrapErrorWithTrackableException(updateParamsMappingError)
-		}
+	if updateParamsMappingError != nil {
+		return nil, exceptions.WrapErrorWithTrackableException(updateParamsMappingError)
+	}
 
-		newInterest, descriptionUpdateError := services.GetDbConnection().
-			GetQueries().
-			UpdateInterestDescription(ctx, updateParams)
+	newInterest, descriptionUpdateError := services.GetDbConnection().
+		GetQueries().
+		UpdateInterest(ctx, updateParams)
 
-		if descriptionUpdateError != nil {
-			return nil, exceptions.WrapErrorWithTrackableException(descriptionUpdateError)
-		}
-
-		interest = newInterest
+	if descriptionUpdateError != nil {
+		return nil, exceptions.WrapErrorWithTrackableException(descriptionUpdateError)
 	}
 
 	var result update.UpdateInterestResponseDto
 
 	resultMappingError := mapper.Mapper{}.Map(
 		&result,
-		interest,
+		newInterest,
 		struct {
 			IconDownloadLink string
 		}{
