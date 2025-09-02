@@ -181,7 +181,7 @@ func (c *Client) ModifyFileContents(ctx context.Context, fileHeader *multipart.F
 		}
 	}
 
-	return c.GetDownloadUrl(ctx, filename, bucketName)
+	return c.GetDownloadUrl(ctx, newFileName, bucketName)
 }
 
 func (c *Client) CreateBucket(ctx context.Context, bucketName Buckets) error {

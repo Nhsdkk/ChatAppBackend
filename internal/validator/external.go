@@ -34,6 +34,10 @@ func (vGroup ExternalValidatorGroup[T]) Validate(data *T, ctx context.Context, e
 		}
 	}
 
+	if len(msgs) == 0 {
+		return nil
+	}
+
 	return vGroup.exceptionFactory(fmt.Sprintf("validation errors occurred:\n%s", strings.Join(msgs, "\n")))
 }
 

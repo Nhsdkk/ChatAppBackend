@@ -61,7 +61,7 @@ func (u UpdateInterestsHandler) Handle(
 		}
 
 		newDownloadLink, uploadError := services.GetS3Client().
-			ModifyFileContents(ctx, request.Icon, interest.IconFileName, newFileType, s3.InterestsIconBucket)
+			ModifyFileContents(ctx, request.Icon, interest.IconFileName, newFileName, s3.InterestsIconBucket)
 
 		if uploadError != nil {
 			return nil, exceptions.WrapErrorWithTrackableException(uploadError)
