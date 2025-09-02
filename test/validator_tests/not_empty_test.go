@@ -25,7 +25,7 @@ func TestValidator_NotEmpty_ShouldWorkWithFilledValues(t *testing.T) {
 	}
 
 	validatorObject := validator.Validator[testStructNotEmpty]{}
-	require.NoError(t, validatorObject.Validate(&v, context.Background()))
+	require.NoError(t, validatorObject.Validate(&v, context.Background(), requestEnv))
 }
 
 func TestValidator_NotEmpty_ShouldFailWithUnfilledValues(t *testing.T) {
@@ -37,7 +37,7 @@ func TestValidator_NotEmpty_ShouldFailWithUnfilledValues(t *testing.T) {
 	validatorObject := validator.Validator[testStructNotEmpty]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v, context.Background()),
+		validatorObject.Validate(&v, context.Background(), requestEnv),
 		`validation errors occurred:
 field idVal is empty, but is required to be filled
 field intVal is empty, but is required to be filled`,

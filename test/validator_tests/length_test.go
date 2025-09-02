@@ -20,7 +20,7 @@ func TestValidator_Length_ShouldWorkWhenPassedCorrectValues(t *testing.T) {
 	}
 
 	validatorObject := validator.Validator[testStructLength]{}
-	require.NoError(t, validatorObject.Validate(&v, context.Background()))
+	require.NoError(t, validatorObject.Validate(&v, context.Background(), requestEnv))
 }
 
 func TestValidator_Length_ShouldWorkWhenPassedWrongValues(t *testing.T) {
@@ -32,7 +32,7 @@ func TestValidator_Length_ShouldWorkWhenPassedWrongValues(t *testing.T) {
 	validatorObject := validator.Validator[testStructLength]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v, context.Background()),
+		validatorObject.Validate(&v, context.Background(), requestEnv),
 		`validation errors occurred:
 length of value under field StringVal is not eq than 3
 length of value under field SliceVal is not lt than 5`,

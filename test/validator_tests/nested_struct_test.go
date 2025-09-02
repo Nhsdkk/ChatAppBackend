@@ -48,7 +48,7 @@ func TestValidator_NestedStructs_ShouldWorkWithArrayOfStructsWithFilledValues(t 
 	}
 
 	validatorObject := validator.Validator[testStructNestedArray]{}
-	require.NoError(t, validatorObject.Validate(&v, context.Background()))
+	require.NoError(t, validatorObject.Validate(&v, context.Background(), requestEnv))
 }
 
 func TestValidator_NestedStructs_ShouldFailWithArrayOfStructsWithUnfilledValues(t *testing.T) {
@@ -66,7 +66,7 @@ func TestValidator_NestedStructs_ShouldFailWithArrayOfStructsWithUnfilledValues(
 	validatorObject := validator.Validator[testStructNestedArray]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v, context.Background()),
+		validatorObject.Validate(&v, context.Background(), requestEnv),
 		`validation errors occurred:
 field idVal is empty, but is required to be filled
 field idVal is empty, but is required to be filled
@@ -89,7 +89,7 @@ func TestValidator_NestedStructs_ShouldWorkWithStructsWithFilledValues(t *testin
 	}
 
 	validatorObject := validator.Validator[testStructNested]{}
-	require.NoError(t, validatorObject.Validate(&v, context.Background()))
+	require.NoError(t, validatorObject.Validate(&v, context.Background(), requestEnv))
 }
 
 func TestValidator_NestedStructs_ShouldFailWithStructsWithUnfilledValues(t *testing.T) {
@@ -105,7 +105,7 @@ func TestValidator_NestedStructs_ShouldFailWithStructsWithUnfilledValues(t *test
 	validatorObject := validator.Validator[testStructNested]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v, context.Background()),
+		validatorObject.Validate(&v, context.Background(), requestEnv),
 		`validation errors occurred:
 field idVal is empty, but is required to be filled
 field idVal is empty, but is required to be filled

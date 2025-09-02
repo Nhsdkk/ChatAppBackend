@@ -9,6 +9,8 @@ import (
 	"chat_app_backend/application/models/interests/delete"
 	"chat_app_backend/application/models/interests/get"
 	"chat_app_backend/application/models/interests/update"
+	"chat_app_backend/internal/exceptions"
+	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/extensions"
 	"chat_app_backend/internal/router"
 	"chat_app_backend/internal/service_wrapper"
@@ -45,6 +47,27 @@ func CreateInterestsController(
 					interests.CreateInterestHandler{}.Handle,
 					validator.Validator[create.CreateInterestRequestDto]{}.
 						AttachValidator(
+							validator.ExternalValidator[create.CreateInterestRequestDto, interface{}]{}.
+								RuleFor(
+									func(data *create.CreateInterestRequestDto) *interface{} {
+										return nil
+									},
+								).
+								Must(interests_validators.InterestModificationAccessValidator{}).
+								WithExceptionFactory(
+									func(message string) error {
+										return &common_exceptions.ForbiddenException{
+											BaseRestException: exceptions.BaseRestException{
+												ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+												Message:             message,
+											},
+										}
+									},
+								).
+								WithMessage("interest creation is forbidden").
+								Validate,
+						).
+						AttachValidator(
 							validator.ExternalValidator[create.CreateInterestRequestDto, string]{}.
 								RuleFor(
 									func(data *create.CreateInterestRequestDto) *string {
@@ -65,6 +88,27 @@ func CreateInterestsController(
 					interests.DeleteInterestHandler{}.Handle,
 					validator.Validator[delete.DeleteInterestRequestDto]{}.
 						AttachValidator(
+							validator.ExternalValidator[delete.DeleteInterestRequestDto, interface{}]{}.
+								RuleFor(
+									func(data *delete.DeleteInterestRequestDto) *interface{} {
+										return nil
+									},
+								).
+								Must(interests_validators.InterestModificationAccessValidator{}).
+								WithExceptionFactory(
+									func(message string) error {
+										return &common_exceptions.ForbiddenException{
+											BaseRestException: exceptions.BaseRestException{
+												ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+												Message:             message,
+											},
+										}
+									},
+								).
+								WithMessage("interest deletion is forbidden").
+								Validate,
+						).
+						AttachValidator(
 							validator.ExternalValidator[delete.DeleteInterestRequestDto, []extensions.UUID]{}.
 								RuleFor(
 									func(data *delete.DeleteInterestRequestDto) *[]extensions.UUID {
@@ -74,6 +118,16 @@ func CreateInterestsController(
 								Must(
 									interests_validators.InterestsExistenceValidator{
 										Db: wrapper.GetDbConnection(),
+									},
+								).
+								WithExceptionFactory(
+									func(message string) error {
+										return &common_exceptions.ResourceNotFoundException{
+											BaseRestException: exceptions.BaseRestException{
+												ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+												Message:             message,
+											},
+										}
 									},
 								).
 								WithMessage("interest with provided id does not exist").
@@ -88,6 +142,27 @@ func CreateInterestsController(
 					"/:id",
 					interests.UpdateInterestsHandler{}.Handle,
 					validator.Validator[update.UpdateInterestRequestDto]{}.
+						AttachValidator(
+							validator.ExternalValidator[update.UpdateInterestRequestDto, interface{}]{}.
+								RuleFor(
+									func(data *update.UpdateInterestRequestDto) *interface{} {
+										return nil
+									},
+								).
+								Must(interests_validators.InterestModificationAccessValidator{}).
+								WithExceptionFactory(
+									func(message string) error {
+										return &common_exceptions.ForbiddenException{
+											BaseRestException: exceptions.BaseRestException{
+												ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+												Message:             message,
+											},
+										}
+									},
+								).
+								WithMessage("interest modification is forbidden").
+								Validate,
+						).
 						AttachValidator(
 							validator.ExternalValidator[update.UpdateInterestRequestDto, []extensions.UUID]{}.
 								RuleFor(
@@ -136,6 +211,16 @@ func CreateInterestsController(
 										Db: wrapper.GetDbConnection(),
 									},
 								).
+								WithExceptionFactory(
+									func(message string) error {
+										return &common_exceptions.ResourceNotFoundException{
+											BaseRestException: exceptions.BaseRestException{
+												ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+												Message:             message,
+											},
+										}
+									},
+								).
 								WithMessage("some interests dont exist").
 								Validate,
 						).
@@ -149,6 +234,16 @@ func CreateInterestsController(
 								Must(
 									user_validators.UserExistenceValidator{
 										Db: wrapper.GetDbConnection(),
+									},
+								).
+								WithExceptionFactory(
+									func(message string) error {
+										return &common_exceptions.ResourceNotFoundException{
+											BaseRestException: exceptions.BaseRestException{
+												ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+												Message:             message,
+											},
+										}
 									},
 								).
 								WithMessage("user does not exist").

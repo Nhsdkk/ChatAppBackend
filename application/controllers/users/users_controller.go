@@ -10,6 +10,8 @@ import (
 	"chat_app_backend/application/models/users/refresh_token"
 	"chat_app_backend/application/models/users/register"
 	"chat_app_backend/application/models/users/update"
+	"chat_app_backend/internal/exceptions"
+	"chat_app_backend/internal/exceptions/common_exceptions"
 	"chat_app_backend/internal/extensions"
 	"chat_app_backend/internal/router"
 	"chat_app_backend/internal/service_wrapper"
@@ -35,48 +37,51 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 				validator.
 					Validator[register.RegisterRequestDto]{}.
 					AttachValidator(
-						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
-							RuleFor(
-								func(data *register.RegisterRequestDto) *string {
-									return &data.Avatar.Filename
-								},
+						validator.CreateValidatorGroup[register.RegisterRequestDto]().
+							AttachValidation(
+								validator.ExternalValidator[register.RegisterRequestDto, string]{}.
+									RuleFor(
+										func(data *register.RegisterRequestDto) *string {
+											return &data.Avatar.Filename
+										},
+									).
+									Must(user_validators.AvatarFileTypeValidator{}).
+									WithMessage("avatar file type is invalid").
+									Validate,
 							).
-							Must(user_validators.AvatarFileTypeValidator{}).
-							WithMessage("avatar file type is invalid").
-							Validate,
-					).
-					AttachValidator(
-						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
-							RuleFor(
-								func(data *register.RegisterRequestDto) *string {
-									return &data.Email
-								},
+							AttachValidation(
+								validator.ExternalValidator[register.RegisterRequestDto, string]{}.
+									RuleFor(
+										func(data *register.RegisterRequestDto) *string {
+											return &data.Email
+										},
+									).
+									Must(user_validators.EmailFormatValidator{}).
+									WithMessage("email is of wrong format").
+									Validate,
 							).
-							Must(user_validators.EmailFormatValidator{}).
-							WithMessage("email is of wrong format").
-							Validate,
-					).
-					AttachValidator(
-						validator.ExternalValidator[register.RegisterRequestDto, time.Time]{}.
-							RuleFor(
-								func(data *register.RegisterRequestDto) *time.Time {
-									return &data.Birthday
-								},
+							AttachValidation(
+								validator.ExternalValidator[register.RegisterRequestDto, time.Time]{}.
+									RuleFor(
+										func(data *register.RegisterRequestDto) *time.Time {
+											return &data.Birthday
+										},
+									).
+									Must(user_validators.BirthDateValidator{}).
+									WithMessage("you are not old enough to register").
+									Validate,
 							).
-							Must(user_validators.BirthDateValidator{}).
-							WithMessage("you are not old enough to register").
-							Validate,
-					).
-					AttachValidator(
-						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
-							RuleFor(
-								func(data *register.RegisterRequestDto) *string {
-									return &data.Password
-								},
-							).
-							Must(user_validators.PasswordValidator{}).
-							WithMessage("password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)").
-							Validate,
+							AttachValidation(
+								validator.ExternalValidator[register.RegisterRequestDto, string]{}.
+									RuleFor(
+										func(data *register.RegisterRequestDto) *string {
+											return &data.Password
+										},
+									).
+									Must(user_validators.PasswordValidator{}).
+									WithMessage("password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)").
+									Validate,
+							).Validate,
 					).
 					AttachValidator(
 						validator.ExternalValidator[register.RegisterRequestDto, string]{}.
@@ -88,6 +93,16 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 							Must(
 								user_validators.NameUniquenessValidator{
 									Db: serviceWrapper.GetDbConnection(),
+								},
+							).
+							WithExceptionFactory(
+								func(message string) error {
+									return &common_exceptions.InvalidBodyException{
+										BaseRestException: exceptions.BaseRestException{
+											ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+											Message:             message,
+										},
+									}
 								},
 							).
 							WithMessage("that full name is already taken").
@@ -105,6 +120,16 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 									Db: serviceWrapper.GetDbConnection(),
 								},
 							).
+							WithExceptionFactory(
+								func(message string) error {
+									return &common_exceptions.InvalidBodyException{
+										BaseRestException: exceptions.BaseRestException{
+											ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+											Message:             message,
+										},
+									}
+								},
+							).
 							WithMessage("that email is already used").
 							Validate,
 					).
@@ -118,6 +143,16 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 							Must(
 								interests_validators.InterestsExistenceValidator{
 									Db: serviceWrapper.GetDbConnection(),
+								},
+							).
+							WithExceptionFactory(
+								func(message string) error {
+									return &common_exceptions.ResourceNotFoundException{
+										BaseRestException: exceptions.BaseRestException{
+											ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+											Message:             message,
+										},
+									}
 								},
 							).
 							WithMessage("some interests not found").
@@ -180,6 +215,27 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 										return &data.ID
 									},
 								).
+								Must(user_validators.UserModificationAccessValidator{}).
+								WithExceptionFactory(
+									func(message string) error {
+										return &common_exceptions.ForbiddenException{
+											BaseRestException: exceptions.BaseRestException{
+												ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+												Message:             message,
+											},
+										}
+									},
+								).
+								WithMessage("you dont have access to delete this user").
+								Validate,
+						).
+						AttachValidator(
+							validator.ExternalValidator[delete.DeleteUserRequestDto, extensions.UUID]{}.
+								RuleFor(
+									func(data *delete.DeleteUserRequestDto) *extensions.UUID {
+										return &data.ID
+									},
+								).
 								Must(
 									user_validators.UserExistenceValidator{
 										Db: serviceWrapper.GetDbConnection(),
@@ -199,51 +255,76 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 					validator.
 						Validator[update.UpdateUserRequestDto]{}.
 						AttachValidator(
-							validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
+							validator.ExternalValidator[update.UpdateUserRequestDto, extensions.UUID]{}.
 								RuleFor(
-									func(data *update.UpdateUserRequestDto) *string {
-										return &data.Avatar.Filename
+									func(data *update.UpdateUserRequestDto) *extensions.UUID {
+										return &data.ID
 									},
 								).
-								Must(user_validators.AvatarFileTypeValidator{}).
-								WithMessage("avatar file type is invalid").
-								Optional().
+								Must(user_validators.UserModificationAccessValidator{}).
+								WithExceptionFactory(
+									func(message string) error {
+										return &common_exceptions.ForbiddenException{
+											BaseRestException: exceptions.BaseRestException{
+												ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+												Message:             message,
+											},
+										}
+									},
+								).
+								WithMessage("you dont have access to modify this user").
 								Validate,
 						).
 						AttachValidator(
-							validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
-								RuleFor(
-									func(data *update.UpdateUserRequestDto) *string {
-										return data.Email
-									},
+							validator.CreateValidatorGroup[update.UpdateUserRequestDto]().
+								AttachValidation(
+									validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
+										RuleFor(
+											func(data *update.UpdateUserRequestDto) *string {
+												return &data.Avatar.Filename
+											},
+										).
+										Must(user_validators.AvatarFileTypeValidator{}).
+										WithMessage("avatar file type is invalid").
+										Optional().
+										Validate,
 								).
-								Must(user_validators.EmailFormatValidator{}).
-								WithMessage("email is of wrong format").
-								Optional().
-								Validate,
-						).
-						AttachValidator(
-							validator.ExternalValidator[update.UpdateUserRequestDto, time.Time]{}.
-								RuleFor(
-									func(data *update.UpdateUserRequestDto) *time.Time {
-										return data.Birthday
-									},
+								AttachValidation(
+									validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
+										RuleFor(
+											func(data *update.UpdateUserRequestDto) *string {
+												return data.Email
+											},
+										).
+										Must(user_validators.EmailFormatValidator{}).
+										WithMessage("email is of wrong format").
+										Optional().
+										Validate,
 								).
-								Must(user_validators.BirthDateValidator{}).
-								WithMessage("you are not old enough to register").
-								Optional().
-								Validate,
-						).
-						AttachValidator(
-							validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
-								RuleFor(
-									func(data *update.UpdateUserRequestDto) *string {
-										return data.PasswordString
-									},
+								AttachValidation(
+									validator.ExternalValidator[update.UpdateUserRequestDto, time.Time]{}.
+										RuleFor(
+											func(data *update.UpdateUserRequestDto) *time.Time {
+												return data.Birthday
+											},
+										).
+										Must(user_validators.BirthDateValidator{}).
+										WithMessage("you are not old enough to register").
+										Optional().
+										Validate,
 								).
-								Must(user_validators.PasswordValidator{}).
-								WithMessage("password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)").
-								Optional().
+								AttachValidation(
+									validator.ExternalValidator[update.UpdateUserRequestDto, string]{}.
+										RuleFor(
+											func(data *update.UpdateUserRequestDto) *string {
+												return data.PasswordString
+											},
+										).
+										Must(user_validators.PasswordValidator{}).
+										WithMessage("password should have at least one of each of this characters (special characters, upper and lowercase letters, digits)").
+										Optional().
+										Validate,
+								).
 								Validate,
 						).
 						AttachValidator(
@@ -288,6 +369,16 @@ func CreateUserController(engine *gin.Engine, serviceWrapper service_wrapper.ISe
 								Must(
 									user_validators.UserExistenceValidator{
 										Db: serviceWrapper.GetDbConnection(),
+									},
+								).
+								WithExceptionFactory(
+									func(message string) error {
+										return &common_exceptions.ResourceNotFoundException{
+											BaseRestException: exceptions.BaseRestException{
+												ITrackableException: exceptions.CreateTrackableExceptionFromStringF(message),
+												Message:             message,
+											},
+										}
 									},
 								).
 								WithMessage("user with this id does not exist").

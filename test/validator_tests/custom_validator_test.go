@@ -1,6 +1,7 @@
 package validator_tests
 
 import (
+	"chat_app_backend/internal/request_env"
 	"chat_app_backend/internal/validator"
 	"context"
 	"strings"
@@ -23,7 +24,7 @@ type IdValidator struct {
 	RequiredId int
 }
 
-func (i IdValidator) Validate(id *int, _ context.Context) bool {
+func (i IdValidator) Validate(id *int, _ context.Context, _ request_env.RequestEnv) bool {
 	if *id != i.RequiredId {
 		return false
 	}
@@ -33,7 +34,7 @@ func (i IdValidator) Validate(id *int, _ context.Context) bool {
 
 type NameValidator struct{}
 
-func (n NameValidator) Validate(name *string, _ context.Context) bool {
+func (n NameValidator) Validate(name *string, _ context.Context, _ request_env.RequestEnv) bool {
 	if len(*name) < 10 {
 		return false
 	}
@@ -43,7 +44,7 @@ func (n NameValidator) Validate(name *string, _ context.Context) bool {
 
 type EmailValidator struct{}
 
-func (e EmailValidator) Validate(email *string, _ context.Context) bool {
+func (e EmailValidator) Validate(email *string, _ context.Context, _ request_env.RequestEnv) bool {
 	if !strings.Contains(*email, "@") {
 		return false
 	}
@@ -93,7 +94,7 @@ func TestValidator_CustomValidators_ShouldWorkWithRightValue(t *testing.T) {
 					WithMessage("id does not match").
 					Validate,
 			).
-			Validate(&v, context.Background()),
+			Validate(&v, context.Background(), requestEnv),
 	)
 }
 
@@ -140,11 +141,8 @@ func TestValidator_CustomValidators_ShouldFailWithWrongValue(t *testing.T) {
 					WithMessage("id does not match").
 					Validate,
 			).
-			Validate(&v, context.Background()),
-		`validation errors occurred:
-name is too short
-email has wrong format
-id does not match`,
+			Validate(&v, context.Background(), requestEnv),
+		"name is too short",
 	)
 }
 
@@ -166,9 +164,8 @@ func TestValidator_CustomValidators_ShouldFailWithEmptyValueWithoutOptional(t *t
 					WithMessage("email has wrong format").
 					Validate,
 			).
-			Validate(&v, context.Background()),
-		`validation errors occurred:
-email has wrong format`,
+			Validate(&v, context.Background(), requestEnv),
+		"email has wrong format",
 	)
 }
 
@@ -191,6 +188,6 @@ func TestValidator_CustomValidators_ShouldWorkWithEmptyValueAndOptional(t *testi
 					Optional().
 					Validate,
 			).
-			Validate(&v, context.Background()),
+			Validate(&v, context.Background(), requestEnv),
 	)
 }

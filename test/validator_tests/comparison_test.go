@@ -29,7 +29,7 @@ func TestValidator_Comparison_ShouldWorkWithPassingCondition(t *testing.T) {
 	}
 
 	validatorObject := validator.Validator[testStructComparison]{}
-	require.NoError(t, validatorObject.Validate(&v, context.Background()))
+	require.NoError(t, validatorObject.Validate(&v, context.Background(), requestEnv))
 }
 
 func TestValidator_Comparison_ShouldFailWithNotPassingCondition(t *testing.T) {
@@ -44,7 +44,7 @@ func TestValidator_Comparison_ShouldFailWithNotPassingCondition(t *testing.T) {
 	validatorObject := validator.Validator[testStructComparison]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v, context.Background()),
+		validatorObject.Validate(&v, context.Background(), requestEnv),
 		`validation errors occurred:
 the value in field intVal should be gte than 0 but it is not
 the value in field uint8Val should be eq than 5 but it is not`,

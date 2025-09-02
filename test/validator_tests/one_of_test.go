@@ -20,7 +20,7 @@ func TestValidator_OneOf_ShouldWorkWhenValueIsInRange(t *testing.T) {
 	}
 
 	validatorObject := validator.Validator[testStructOneOf]{}
-	require.NoError(t, validatorObject.Validate(&v, context.Background()))
+	require.NoError(t, validatorObject.Validate(&v, context.Background(), requestEnv))
 }
 
 func TestValidator_OneOf_ShouldFailWhenValueIsNotInRange(t *testing.T) {
@@ -32,7 +32,7 @@ func TestValidator_OneOf_ShouldFailWhenValueIsNotInRange(t *testing.T) {
 	validatorObject := validator.Validator[testStructOneOf]{}
 	require.EqualError(
 		t,
-		validatorObject.Validate(&v, context.Background()),
+		validatorObject.Validate(&v, context.Background(), requestEnv),
 		`validation errors occurred:
 field stringValueEnum is required to have one of these values [string1 string2]`,
 	)

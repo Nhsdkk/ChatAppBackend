@@ -13,13 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type RouteType int
-
-const (
-	Authorized RouteType = iota
-	Base
-)
-
 type BaseRoute[TRequest interface{}, TResponse interface{}] struct {
 	validator validator.IValidator[TRequest]
 	handler   handler.HFunc[TRequest, TResponse, request_env.RequestEnv]
@@ -77,7 +70,7 @@ func (r *BaseRoute[TRequest, TResponse]) getEndpointHandler(preferredResponseSta
 				return
 			}
 
-			if validationError := r.validator.Validate(&requestDto, ctx); validationError != nil {
+			if validationError := r.validator.Validate(&requestDto, ctx, *env); validationError != nil {
 				var restException exceptions.IRestException
 
 				switch {
